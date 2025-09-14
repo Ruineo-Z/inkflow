@@ -4,6 +4,20 @@ from app.schemas.novel import NovelCreate, NovelUpdate, NovelResponse, NovelDeta
 from app.schemas.novel import WuxiaWorldSetting, SciFiWorldSetting, ProtagonistProfile
 from app.schemas.auth import UserRegisterRequest, UserLoginRequest, TokenResponse
 from app.schemas.kimi import KimiRequest, KimiResponse, StreamChunk
+from app.schemas.chapter import (
+    ChapterBase,
+    OptionBase,
+    GenerateChapterRequest,
+    SaveUserChoiceRequest,
+    OptionResponse,
+    ChapterResponse,
+    UserChoiceResponse,
+    ChapterSummary,
+    ChapterOption,
+    ChapterFullContent,
+    ChapterContext,
+    StreamEvent
+)
 
 __all__ = [
     # 基础用户功能
@@ -16,4 +30,17 @@ __all__ = [
     "UserRegisterRequest", "UserLoginRequest", "TokenResponse",
     # Kimi API相关
     "KimiRequest", "KimiResponse", "StreamChunk",
+    # 章节相关
+    "ChapterBase",
+    "OptionBase",
+    "GenerateChapterRequest",
+    "SaveUserChoiceRequest",
+    "OptionResponse",
+    "ChapterResponse",
+    "UserChoiceResponse",
+    "ChapterSummary",
+    "ChapterOption",
+    "ChapterFullContent",
+    "ChapterContext",
+    "StreamEvent"
 ]

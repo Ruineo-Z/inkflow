@@ -3,5 +3,18 @@ from app.services.novel import NovelService
 from app.services.auth import AuthService
 from app.services.kimi import KimiService, kimi_service
 from app.services.novel_generator import NovelGeneratorService, novel_generator
+from app.services.chapter import ChapterService
+from app.services.chapter_generator import ChapterGeneratorService, chapter_generator
 
-__all__ = ["UserService", "NovelService", "AuthService", "KimiService", "kimi_service", "NovelGeneratorService", "novel_generator"]
+__all__ = [
+    "UserService",
+    "NovelService",
+    "AuthService",
+    "KimiService",
+    "kimi_service",
+    "NovelGeneratorService",
+    "novel_generator",
+    "ChapterService",
+    "ChapterGeneratorService",
+    "chapter_generator"
+]

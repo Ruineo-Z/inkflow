@@ -18,3 +18,4 @@ class Novel(Base):
 
     # 关系
     user = relationship("User", back_populates="novels")
+    chapters = relationship("Chapter", back_populates="novel", cascade="all, delete-orphan")

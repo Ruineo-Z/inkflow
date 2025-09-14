@@ -16,7 +16,10 @@
       "WebFetch(domain:platform.moonshot.cn)",
       "Bash(dir:*)",
       "Bash(del /f \"E:\\DevRep\\inkflow\\app\\api\\v1\\novel_generator.py\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(cd:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
