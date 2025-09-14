@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__promptx__welcome",
+      "mcp__promptx__action",
+      "Bash(mkdir:*)",
+      "Bash(uv init:*)",
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(tree:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker exec:*)",
+      "Read(//e/**)",
+      "Bash(python:*)",
+      "Bash(del /f \"E:\\DevRep\\inkflow\\app\\schemas\\chapter.py\")",
+      "WebFetch(domain:platform.moonshot.cn)",
+      "Bash(dir:*)",
+      "Bash(del /f \"E:\\DevRep\\inkflow\\app\\api\\v1\\novel_generator.py\")",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

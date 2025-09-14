@@ -205,3 +205,36 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project specific
+# 测试脚本
+test_*.py
+*_test.py
+
+# 本地配置和敏感信息
+.env.local
+.env.production
+*.key
+config/local_*.py
+
+# 数据库文件（如果使用SQLite）
+*.db
+*.sqlite
+*.sqlite3
+
+# API密钥和配置
+kimi_api_key.txt
+api_keys/
+
+# 日志文件
+logs/
+*.log
+
+# IDE配置（取消注释以忽略）
+.vscode/
+.idea/
+
+# 临时文件
+temp/
+tmp/
+*.tmp
