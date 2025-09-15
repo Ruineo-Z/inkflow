@@ -19,7 +19,21 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(cd:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(sed:*)",
+      "Bash(cat:*)",
+      "Bash(pip install:*)",
+      "Bash(source:*)",
+      "Bash(uv add:*)",
+      "Bash(chmod:*)",
+      "Bash(find:*)",
+      "Bash(psql:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(git checkout:*)",
+      "Bash(PYTHONPATH=/Users/augenstern/development/personal/inkflow python scripts/direct_test_fix.py)",
+      "Bash(PYTHONPATH=/Users/augenstern/development/personal/inkflow python scripts/test_chapter_list_with_choices.py)",
+      "Bash(PYTHONPATH=/Users/augenstern/development/personal/inkflow python scripts/test_chapter_detail_fix.py)"
     ],
     "deny": [],
     "ask": []

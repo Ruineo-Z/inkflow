@@ -19,7 +19,10 @@ class OptionBase(BaseModel):
 # === 请求模型 ===
 
 class GenerateChapterRequest(BaseModel):
-    selected_option_id: Optional[int] = Field(None, description="选择的选项ID，为空表示生成第一章")
+    # 移除selected_option_id字段
+    # 后端将自动从数据库查询用户的最新选择
+    # 如果是第一章生成，将通过章节数量判断
+    pass
 
 
 class SaveUserChoiceRequest(BaseModel):
@@ -44,6 +47,7 @@ class ChapterResponse(ChapterBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     options: List[OptionResponse] = []
+    selected_option_id: Optional[int] = Field(None, description="用户选择的选项ID")
 
     class Config:
         from_attributes = True

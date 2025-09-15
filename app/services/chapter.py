@@ -1,5 +1,6 @@
+import logging
 from typing import List, Optional, Dict, Any
-from sqlalchemy import select, desc, asc
+from sqlalchemy import select, desc, asc, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -13,6 +14,8 @@ from app.schemas.chapter import (
     OptionResponse
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ChapterService:
     def __init__(self, db: AsyncSession):
@@ -25,7 +28,13 @@ class ChapterService:
         summary_data: ChapterSummary
     ) -> Chapter:
         """创建章节并保存摘要信息"""
+
+        # 计算章节ID：对于这个小说，章节ID = 章节号
+        # 这样第1章ID=1，第2章ID=2，逻辑更清晰
+        chapter_id = await self._calculate_chapter_id(novel_id, chapter_number)
+
         chapter = Chapter(
+            id=chapter_id,  # 手动指定ID
             novel_id=novel_id,
             chapter_number=chapter_number,
             title=summary_data.title,
@@ -36,6 +45,10 @@ class ChapterService:
         self.db.add(chapter)
         await self.db.commit()
         await self.db.refresh(chapter)
+
+        # 更新小说的总章节数
+        await self._update_novel_total_chapters(novel_id)
+
         return chapter
 
     async def update_chapter_content(self, chapter_id: int, content: str) -> Chapter:
@@ -58,9 +71,15 @@ class ChapterService:
         options_data: List[Dict[str, str]]
     ) -> List[Option]:
         """创建章节选项"""
+
         options = []
         for i, option_data in enumerate(options_data, 1):
+            # 计算选项ID：章节ID * 10 + 选项顺序
+            # 例如：章节1001的第1个选项 = 10011
+            option_id = self._calculate_option_id(chapter_id, i)
+
             option = Option(
+                id=option_id,  # 手动指定ID
                 chapter_id=chapter_id,
                 option_order=i,
                 option_text=option_data["text"],
@@ -151,6 +170,12 @@ class ChapterService:
     ) -> ChapterContext:
         """获取章节生成所需的上下文信息"""
 
+        logger.info(f"📋 开始构建章节生成上下文，小说ID: {novel_id}")
+        if selected_option_id:
+            logger.info(f"🎯 选择的选项ID: {selected_option_id}")
+        else:
+            logger.info(f"🎯 无选项ID，生成第一章")
+
         # 1. 获取小说基础信息
         result = await self.db.execute(
             select(Novel).where(Novel.id == novel_id)
@@ -162,9 +187,13 @@ class ChapterService:
 
         # 2. 获取最近5章的完整内容
         recent_chapters = await self.get_recent_chapters(novel_id, limit=5)
+        recent_chapter_ids = [ch.id for ch in recent_chapters]
+        logger.info(f"📚 使用完整章节内容的章节ID: {recent_chapter_ids}")
 
         # 3. 获取其余章节的摘要
         chapter_summaries = await self.get_chapter_summaries(novel_id, exclude_recent=5)
+        summary_chapter_ids = [summary['id'] for summary in chapter_summaries]
+        logger.info(f"📝 使用摘要的章节ID: {summary_chapter_ids}")
 
         # 4. 获取选择的选项文本
         selected_option_text = None
@@ -174,6 +203,10 @@ class ChapterService:
                 .where(Option.id == selected_option_id)
             )
             selected_option_text = result.scalar_one_or_none()
+            if selected_option_text:
+                logger.info(f"✅ 找到选项文本: {selected_option_text[:100]}...")
+            else:
+                logger.warning(f"⚠️ 选项ID {selected_option_id} 未找到对应文本")
 
         # 5. 手动构建章节数据，避免循环引用
         recent_chapters_data = []
@@ -199,13 +232,60 @@ class ChapterService:
             }
             recent_chapters_data.append(chapter_data)
 
-        return ChapterContext(
+        # 构建上下文完成日志
+        context = ChapterContext(
             world_setting=novel.world_setting or "",
             protagonist_info=novel.protagonist_info or "",
             recent_chapters=recent_chapters_data,  # 现在是字典列表，不是Pydantic模型
             chapter_summaries=chapter_summaries,
             selected_option=selected_option_text
         )
+
+        logger.info(f"✅ 上下文构建完成:")
+        logger.info(f"   📚 完整内容章节数: {len(recent_chapters_data)}")
+        logger.info(f"   📝 摘要章节数: {len(chapter_summaries)}")
+        logger.info(f"   🎯 选项文本: {'有' if selected_option_text else '无'}")
+
+        return context
+
+    async def get_chapter_by_id(self, chapter_id: int) -> Optional[Chapter]:
+        """根据ID获取章节信息（包含选项）"""
+        result = await self.db.execute(
+            select(Chapter)
+            .options(selectinload(Chapter.options))
+            .where(Chapter.id == chapter_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def get_latest_user_choice(
+        self,
+        user_id: int,
+        novel_id: int
+    ) -> Optional[int]:
+        """获取用户对该小说最新章节的选择选项ID"""
+
+        # 1. 获取最新章节ID
+        result = await self.db.execute(
+            select(Chapter.id)
+            .where(Chapter.novel_id == novel_id)
+            .order_by(desc(Chapter.chapter_number))
+            .limit(1)
+        )
+        latest_chapter_id = result.scalar_one_or_none()
+
+        if not latest_chapter_id:
+            return None  # 没有章节
+
+        # 2. 获取用户对最新章节的选择
+        choice_result = await self.db.execute(
+            select(UserChoice.option_id)
+            .where(
+                UserChoice.user_id == user_id,
+                UserChoice.chapter_id == latest_chapter_id
+            )
+        )
+
+        return choice_result.scalar_one_or_none()
 
     async def save_user_choice(
         self,
@@ -264,9 +344,218 @@ class ChapterService:
         """获取小说的所有章节列表"""
         result = await self.db.execute(
             select(Chapter)
+            .options(selectinload(Chapter.options))
             .where(Chapter.novel_id == novel_id)
             .order_by(asc(Chapter.chapter_number))
             .offset(skip)
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def get_chapters_by_novel_with_user_choices(
+        self,
+        novel_id: int,
+        user_id: int,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """获取小说的所有章节列表，包含用户选择信息"""
+
+        # 1. 获取章节列表（包含选项）
+        result = await self.db.execute(
+            select(Chapter)
+            .options(selectinload(Chapter.options))
+            .where(Chapter.novel_id == novel_id)
+            .order_by(asc(Chapter.chapter_number))
+            .offset(skip)
+            .limit(limit)
+        )
+        chapters = list(result.scalars().all())
+
+        if not chapters:
+            return []
+
+        # 2. 获取用户对这些章节的选择
+        chapter_ids = [chapter.id for chapter in chapters]
+        user_choices_result = await self.db.execute(
+            select(UserChoice.chapter_id, UserChoice.option_id)
+            .where(
+                UserChoice.user_id == user_id,
+                UserChoice.chapter_id.in_(chapter_ids)
+            )
+        )
+
+        # 构建章节ID到选择选项ID的映射
+        user_choices_map = {
+            row.chapter_id: row.option_id
+            for row in user_choices_result.fetchall()
+        }
+
+        # 3. 构建返回数据，将章节信息和用户选择合并
+        chapters_with_choices = []
+        for chapter in chapters:
+            chapter_dict = {
+                "id": chapter.id,
+                "chapter_number": chapter.chapter_number,
+                "novel_id": chapter.novel_id,
+                "title": chapter.title,
+                "summary": chapter.summary,
+                "content": chapter.content,
+                "created_at": chapter.created_at,
+                "updated_at": chapter.updated_at,
+                "options": [
+                    {
+                        "id": opt.id,
+                        "option_order": opt.option_order,
+                        "option_text": opt.option_text,
+                        "impact_description": opt.impact_description,
+                        "created_at": opt.created_at
+                    } for opt in chapter.options
+                ],
+                "selected_option_id": user_choices_map.get(chapter.id)
+            }
+            chapters_with_choices.append(chapter_dict)
+
+        return chapters_with_choices
+
+    async def get_chapter_by_id_with_user_choice(
+        self,
+        chapter_id: int,
+        user_id: int
+    ) -> Optional[Dict[str, Any]]:
+        """获取单个章节详情，包含用户选择信息"""
+
+        # 1. 获取章节详情（包含选项）
+        result = await self.db.execute(
+            select(Chapter)
+            .options(selectinload(Chapter.options))
+            .where(Chapter.id == chapter_id)
+        )
+        chapter = result.scalar_one_or_none()
+
+        if not chapter:
+            return None
+
+        # 2. 获取用户对该章节的选择
+        user_choice_result = await self.db.execute(
+            select(UserChoice.option_id)
+            .where(
+                UserChoice.user_id == user_id,
+                UserChoice.chapter_id == chapter_id
+            )
+        )
+        selected_option_id = user_choice_result.scalar_one_or_none()
+
+        # 3. 构建返回数据
+        chapter_data = {
+            "id": chapter.id,
+            "chapter_number": chapter.chapter_number,
+            "novel_id": chapter.novel_id,
+            "title": chapter.title,
+            "summary": chapter.summary,
+            "content": chapter.content,
+            "created_at": chapter.created_at,
+            "updated_at": chapter.updated_at,
+            "options": [
+                {
+                    "id": opt.id,
+                    "option_order": opt.option_order,
+                    "option_text": opt.option_text,
+                    "impact_description": opt.impact_description,
+                    "created_at": opt.created_at
+                } for opt in chapter.options
+            ],
+            "selected_option_id": selected_option_id
+        }
+
+        return chapter_data
+
+    async def _update_novel_total_chapters(self, novel_id: int) -> None:
+        """更新小说的总章节数"""
+        # 查询当前小说的章节总数
+        result = await self.db.execute(
+            select(func.count(Chapter.id))
+            .where(Chapter.novel_id == novel_id)
+        )
+        total_chapters = result.scalar() or 0
+
+        # 更新小说表的 total_chapters 字段
+        result = await self.db.execute(
+            select(Novel).where(Novel.id == novel_id)
+        )
+        novel = result.scalar_one_or_none()
+
+        if novel:
+            novel.total_chapters = total_chapters
+            await self.db.commit()
+            await self.db.refresh(novel)
+
+    async def _reset_chapter_sequence(self) -> None:
+        """重置章节ID序列到下一个可用值"""
+        try:
+            # 查询当前最大的chapter ID
+            result = await self.db.execute(
+                select(func.max(Chapter.id))
+            )
+            max_id = result.scalar() or 0
+
+            # 重置序列到最大ID + 1
+            new_seq_value = max_id + 1
+            await self.db.execute(
+                text(f"ALTER SEQUENCE chapters_id_seq RESTART WITH {new_seq_value}")
+            )
+            await self.db.commit()
+
+        except Exception as e:
+            # 如果重置失败，记录错误但不影响主流程
+            print(f"Warning: Failed to reset chapter sequence: {e}")
+
+    async def _reset_option_sequence(self) -> None:
+        """重置选项ID序列到下一个可用值"""
+        try:
+            # 查询当前最大的option ID
+            result = await self.db.execute(
+                select(func.max(Option.id))
+            )
+            max_id = result.scalar() or 0
+
+            # 重置序列到最大ID + 1
+            new_seq_value = max_id + 1
+            await self.db.execute(
+                text(f"ALTER SEQUENCE options_id_seq RESTART WITH {new_seq_value}")
+            )
+            await self.db.commit()
+
+        except Exception as e:
+            # 如果重置失败，记录错误但不影响主流程
+            print(f"Warning: Failed to reset option sequence: {e}")
+
+    def enable_auto_sequence_reset(self) -> None:
+        """启用自动序列重置"""
+        self._auto_reset_sequence = True
+
+    def disable_auto_sequence_reset(self) -> None:
+        """禁用自动序列重置"""
+        self._auto_reset_sequence = False
+
+    async def _calculate_chapter_id(self, novel_id: int, chapter_number: int) -> int:
+        """
+        计算章节ID
+        策略：使用 novel_id * 1000 + chapter_number 确保不同小说的章节ID不冲突
+        例如：
+        - 小说1的第1章：ID = 1001
+        - 小说1的第2章：ID = 1002
+        - 小说2的第1章：ID = 2001
+        """
+        return novel_id * 1000 + chapter_number
+
+    def _calculate_option_id(self, chapter_id: int, option_order: int) -> int:
+        """
+        计算选项ID
+        策略：使用 chapter_id * 10 + option_order 确保选项ID有逻辑意义
+        例如：
+        - 章节1001的第1个选项：ID = 10011
+        - 章节1001的第2个选项：ID = 10012
+        - 章节1002的第1个选项：ID = 10021
+        """
+        return chapter_id * 10 + option_order

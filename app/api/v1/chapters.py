@@ -1,7 +1,8 @@
+import json
+import logging
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-import json
 
 from app.db.database import get_db
 from app.core.security import get_current_user_id
@@ -16,6 +17,7 @@ from app.schemas.chapter import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/novels/{novel_id}/chapters/generate", summary="生成章节内容（流式）")
@@ -59,16 +61,10 @@ async def generate_chapter_stream(
         chapter_service = ChapterService(db)
 
         # 3. 判断是第一章还是后续章节
-        if request.selected_option_id is None:
-            # 第一章生成
+        latest_chapter_num = await chapter_service.get_latest_chapter_number(novel_id)
 
-            # 检查是否已经有章节（防止重复生成第一章）
-            latest_chapter_num = await chapter_service.get_latest_chapter_number(novel_id)
-            if latest_chapter_num > 0:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="第一章已存在，请使用选项生成后续章节"
-                )
+        if latest_chapter_num == 0:
+            # 第一章生成
 
             async def first_chapter_stream():
                 chapter_id = None
@@ -132,14 +128,25 @@ async def generate_chapter_stream(
         else:
             # 后续章节生成
 
-            # 验证选项存在
-            # TODO: 验证option_id的有效性
-
             async def next_chapter_stream():
                 try:
+                    # 获取用户最新选择
+                    selected_option_id = await chapter_service.get_latest_user_choice(
+                        user_id=current_user_id,
+                        novel_id=novel_id
+                    )
+
+                    if not selected_option_id:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="未找到用户选择，请先选择一个选项"
+                        )
+
+                    logger.info(f"🎯 从数据库获取用户选择: {selected_option_id}")
+
                     # 获取生成上下文
                     context = await chapter_service.get_generation_context(
-                        novel_id, request.selected_option_id
+                        novel_id, selected_option_id
                     )
 
                     # 获取下一章节号
@@ -148,7 +155,7 @@ async def generate_chapter_stream(
                     chapter_id = None
 
                     async for event_data in chapter_generator.generate_next_chapter_stream(
-                        novel_id, request.selected_option_id, context
+                        novel_id, selected_option_id, context
                     ):
                         # 类似第一章的处理逻辑
                         if event_data.startswith("event: summary"):
@@ -299,11 +306,13 @@ async def get_novel_chapters(
                 detail="无权访问此小说"
             )
 
-        # 获取章节列表
+        # 获取章节列表（包含用户选择）
         chapter_service = ChapterService(db)
-        chapters = await chapter_service.get_chapters_by_novel(novel_id)
+        chapters_with_choices = await chapter_service.get_chapters_by_novel_with_user_choices(
+            novel_id, current_user_id
+        )
 
-        return [ChapterResponse.from_orm(chapter) for chapter in chapters]
+        return chapters_with_choices
 
     except HTTPException:
         raise
@@ -325,9 +334,13 @@ async def get_chapter_detail(
     """
     try:
         chapter_service = ChapterService(db)
-        chapter = await chapter_service.get_chapter_by_id(chapter_id)
 
-        if not chapter:
+        # 获取包含用户选择的章节详情
+        chapter_data = await chapter_service.get_chapter_by_id_with_user_choice(
+            chapter_id, current_user_id
+        )
+
+        if not chapter_data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="章节不存在"
@@ -335,14 +348,14 @@ async def get_chapter_detail(
 
         # 验证用户权限
         novel_service = NovelService(db)
-        novel = await novel_service.get_by_id(chapter.novel_id)
+        novel = await novel_service.get_by_id(chapter_data["novel_id"])
         if not novel or novel.user_id != current_user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="无权访问此章节"
             )
 
-        return ChapterResponse.from_orm(chapter)
+        return chapter_data
 
     except HTTPException:
         raise

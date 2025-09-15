@@ -1,5 +1,4 @@
-from typing import List, Optional, Union
-from pydantic import field_validator
+from typing import List
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -10,7 +9,7 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api/v1"
 
     # CORS配置
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8080"]
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080"
 
     # 数据库配置
     DATABASE_URL: str = "postgresql+asyncpg://inkflow:inkflow123@localhost:5432/inkflow"
@@ -33,14 +32,12 @@ class Settings(BaseSettings):
     KIMI_TEMPERATURE: float = 0.7
     KIMI_TIMEOUT: int = 30
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        elif isinstance(v, list):
-            return v
-        return ["http://localhost:3000", "http://localhost:8080"]
+    @property
+    def get_allowed_origins(self) -> List[str]:
+        """解析 ALLOWED_ORIGINS 字符串为列表"""
+        if self.ALLOWED_ORIGINS.strip() == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",") if origin.strip()]
 
     model_config = {
         "env_file": ".env",

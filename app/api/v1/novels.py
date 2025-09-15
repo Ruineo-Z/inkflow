@@ -155,3 +155,61 @@ async def get_user_novels(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"获取小说列表时发生错误: {str(e)}"
         )
+
+
+@router.delete("/{novel_id}", summary="删除小说（级联删除）")
+async def delete_novel(
+    novel_id: int,
+    current_user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    删除小说及其所有相关数据（级联删除）
+
+    将删除：
+    - 小说本身
+    - 所有章节
+    - 所有选项
+    - 所有用户选择记录
+
+    RESTful: DELETE /novels/{id}
+    """
+    try:
+        novel_service = NovelService(db)
+
+        # 1. 检查小说是否存在
+        novel = await novel_service.get_by_id(novel_id)
+        if not novel:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="小说不存在"
+            )
+
+        # 2. 验证权限：只能删除自己的小说
+        if novel.user_id != current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权删除此小说"
+            )
+
+        # 3. 执行级联删除
+        success = await novel_service.delete(novel_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="删除小说失败"
+            )
+
+        return {
+            "message": "小说删除成功",
+            "novel_id": novel_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"删除小说时发生错误: {str(e)}"
+        )

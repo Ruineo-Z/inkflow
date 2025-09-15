@@ -3,10 +3,13 @@
 负责使用AI生成章节摘要、正文和选项
 """
 import json
+import logging
 
 from typing import AsyncGenerator, Dict, Any
 
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 def json_dumps_chinese(obj):
     """JSON序列化时保持中文显示"""
@@ -95,10 +98,11 @@ class ChapterGeneratorService:
         # 构建前续章节信息
         recent_chapters_text = ""
         for chapter in context.recent_chapters[-3:]:  # 只用最近3章，避免prompt过长
+            # chapter 现在是字典格式，需要用字典的方式访问
             recent_chapters_text += f"""
-第{chapter.chapter_number}章：{chapter.title}
-摘要：{chapter.summary}
-正文节选：{chapter.content[:500]}...
+第{chapter['chapter_number']}章：{chapter['title']}
+摘要：{chapter['summary']}
+正文节选：{chapter['content'][:500] if chapter['content'] else ''}...
 """
 
         # 构建历史摘要
@@ -183,8 +187,11 @@ class ChapterGeneratorService:
     ) -> AsyncGenerator[str, None]:
         """生成第一章的流式内容"""
         try:
+            logger.info("🎯 开始生成第一章流式内容")
+            logger.info(f"📚 类型: {genre}, 世界观长度: {len(world_setting)} 字符, 主角信息长度: {len(protagonist_info)} 字符")
 
             # Step 1: 生成第一章摘要
+            logger.info("📝 Step 1: 开始生成章节摘要")
             yield f"event: status\ndata: {json_dumps_chinese({'message': '正在生成章节摘要...'})}\n\n"
 
             system_prompt, user_prompt = self._build_first_chapter_summary_prompt(
@@ -192,6 +199,8 @@ class ChapterGeneratorService:
                 protagonist_info,
                 genre
             )
+
+            logger.info(f"🔧 构建摘要提示词完成, 系统提示词长度: {len(system_prompt)}, 用户提示词长度: {len(user_prompt)}")
 
             summary_result = await kimi_service.generate_structured_output(
                 model_class=ChapterSummary,
@@ -201,15 +210,21 @@ class ChapterGeneratorService:
 
             if not summary_result["success"]:
                 error_msg = f"摘要生成失败: {summary_result.get('error', '未知错误')}"
+                logger.error(f"❌ 章节摘要生成失败: {error_msg}")
                 yield f"event: error\ndata: {json_dumps_chinese({'error': error_msg})}\n\n"
                 return
 
             summary = ChapterSummary(**summary_result["data"])
+            logger.info(f"✅ Step 1 完成: 章节摘要生成成功")
+            logger.info(f"📖 章节标题: {summary.title}")
+            logger.info(f"🎭 关键冲突: {', '.join(summary.conflicts)}")
+            logger.info(f"📋 关键事件数: {len(summary.key_events)}")
 
             # 发送摘要事件
             yield f"event: summary\ndata: {json_dumps_chinese(summary.dict())}\n\n"
 
             # Step 2: 生成章节正文和选项
+            logger.info("✍️  Step 2: 开始生成章节正文和选项")
             yield f"event: status\ndata: {json_dumps_chinese({'message': '正在生成章节正文...'})}\n\n"
 
             context = ChapterContext(
@@ -224,7 +239,10 @@ class ChapterGeneratorService:
                 summary, context, genre
             )
 
+            logger.info(f"🔧 构建正文提示词完成, 系统提示词长度: {len(content_system_prompt)}, 用户提示词长度: {len(content_user_prompt)}")
+
             # 使用流式输出生成正文和选项
+            content_char_count = 0
             async for stream_chunk in kimi_service.generate_streaming_output(
                 model_class=ChapterFullContent,
                 user_prompt=content_user_prompt,
@@ -232,16 +250,27 @@ class ChapterGeneratorService:
             ):
                 # 将StreamChunk转换为SSE格式
                 if stream_chunk.chunk_type == "content":
-                    yield f"event: content\ndata: {json_dumps_chinese({'chunk': stream_chunk.data['chunk']})}\n\n"
+                    chunk_text = stream_chunk.data['chunk']
+                    content_char_count += len(chunk_text)
+                    yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
                 elif stream_chunk.chunk_type == "complete":
+                    logger.info(f"✅ Step 2 完成: 章节正文和选项生成成功")
                     # 添加摘要信息到完成数据中
                     complete_data = stream_chunk.data['result']
                     complete_data['summary'] = summary.dict()
+
+                    # 统计信息
+                    content_length = len(complete_data.get('content', ''))
+                    options_count = len(complete_data.get('options', []))
+                    logger.info(f"📊 正文字符数: {content_length}, 选项数量: {options_count}")
+
                     yield f"event: complete\ndata: {json_dumps_chinese(complete_data)}\n\n"
                 elif stream_chunk.chunk_type == "error":
+                    logger.error(f"❌ 正文生成过程中出错: {stream_chunk.data}")
                     yield f"event: error\ndata: {json_dumps_chinese(stream_chunk.data)}\n\n"
 
         except Exception as e:
+            logger.error(f"❌ 第一章生成过程异常: {str(e)}", exc_info=True)
             yield f"event: error\ndata: {json_dumps_chinese({'error': f'生成过程异常: {str(e)}'})}\n\n"
 
     async def generate_next_chapter_stream(
@@ -252,12 +281,24 @@ class ChapterGeneratorService:
     ) -> AsyncGenerator[str, None]:
         """生成后续章节的流式内容"""
         try:
-            # Step 1: 生成章节摘要
+            logger.info(f"🎯 开始生成后续章节流式内容")
+            logger.info(f"📚 小说ID: {novel_id}, 选择的选项ID: {selected_option_id}")
+            logger.info(f"📝 已有章节数: {len(context.recent_chapters)}, 历史摘要数: {len(context.chapter_summaries)}")
+
+            # Step 1: 获取章节上下文
+            logger.info("📋 Step 0: 获取章节上下文完成")
+            if context.selected_option:
+                logger.info(f"🎯 用户选择: {context.selected_option}")
+
+            # Step 2: 生成章节摘要
+            logger.info("📝 Step 1: 开始生成章节摘要")
             yield f"event: status\ndata: {json_dumps_chinese({'message': '正在生成章节摘要...'})}\n\n"
 
             system_prompt, user_prompt = self._build_next_chapter_summary_prompt(
                 context, "wuxia"  # 需要从novel获取genre信息
             )
+
+            logger.info(f"🔧 构建摘要提示词完成, 系统提示词长度: {len(system_prompt)}, 用户提示词长度: {len(user_prompt)}")
 
             summary_result = await kimi_service.generate_structured_output(
                 model_class=ChapterSummary,
@@ -267,20 +308,28 @@ class ChapterGeneratorService:
 
             if not summary_result["success"]:
                 error_msg = f"摘要生成失败: {summary_result.get('error', '未知错误')}"
+                logger.error(f"❌ 后续章节摘要生成失败: {error_msg}")
                 yield f"event: error\ndata: {json_dumps_chinese({'error': error_msg})}\n\n"
                 return
 
             summary = ChapterSummary(**summary_result["data"])
+            logger.info(f"✅ Step 1 完成: 后续章节摘要生成成功")
+            logger.info(f"📖 章节标题: {summary.title}")
+            logger.info(f"🎭 关键冲突: {', '.join(summary.conflicts)}")
+            logger.info(f"📋 关键事件数: {len(summary.key_events)}")
 
             # 发送摘要事件
             yield f"event: summary\ndata: {json_dumps_chinese(summary.dict())}\n\n"
 
-            # Step 2: 生成章节正文和选项
+            # Step 3: 生成章节正文和选项
+            logger.info("✍️  Step 2: 开始生成章节正文和选项")
             yield f"event: status\ndata: {json_dumps_chinese({'message': '正在生成章节正文...'})}\n\n"
 
             content_system_prompt, content_user_prompt = self._build_chapter_content_prompt(
                 summary, context, "wuxia"
             )
+
+            logger.info(f"🔧 构建正文提示词完成, 系统提示词长度: {len(content_system_prompt)}, 用户提示词长度: {len(content_user_prompt)}")
 
             # 使用流式输出生成正文和选项
             async for stream_chunk in kimi_service.generate_streaming_output(
@@ -290,16 +339,26 @@ class ChapterGeneratorService:
             ):
                 # 将StreamChunk转换为SSE格式
                 if stream_chunk.chunk_type == "content":
-                    yield f"event: content\ndata: {json_dumps_chinese({'chunk': stream_chunk.data['chunk']})}\n\n"
+                    chunk_text = stream_chunk.data['chunk']
+                    yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
                 elif stream_chunk.chunk_type == "complete":
+                    logger.info(f"✅ Step 2 完成: 后续章节正文和选项生成成功")
                     # 添加摘要信息到完成数据中
                     complete_data = stream_chunk.data['result']
                     complete_data['summary'] = summary.dict()
+
+                    # 统计信息
+                    content_length = len(complete_data.get('content', ''))
+                    options_count = len(complete_data.get('options', []))
+                    logger.info(f"📊 正文字符数: {content_length}, 选项数量: {options_count}")
+
                     yield f"event: complete\ndata: {json_dumps_chinese(complete_data)}\n\n"
                 elif stream_chunk.chunk_type == "error":
+                    logger.error(f"❌ 后续章节正文生成过程中出错: {stream_chunk.data}")
                     yield f"event: error\ndata: {json_dumps_chinese(stream_chunk.data)}\n\n"
 
         except Exception as e:
+            logger.error(f"❌ 后续章节生成过程异常: {str(e)}", exc_info=True)
             yield f"event: error\ndata: {json_dumps_chinese({'error': f'生成过程异常: {str(e)}'})}\n\n"
 
 
