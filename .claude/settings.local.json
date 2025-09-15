@@ -33,7 +33,16 @@
       "Bash(git checkout:*)",
       "Bash(PYTHONPATH=/Users/augenstern/development/personal/inkflow python scripts/direct_test_fix.py)",
       "Bash(PYTHONPATH=/Users/augenstern/development/personal/inkflow python scripts/test_chapter_list_with_choices.py)",
-      "Bash(PYTHONPATH=/Users/augenstern/development/personal/inkflow python scripts/test_chapter_detail_fix.py)"
+      "Bash(PYTHONPATH=/Users/augenstern/development/personal/inkflow python scripts/test_chapter_detail_fix.py)",
+      "Bash(git commit:*)",
+      "Bash(npx create-vite:*)",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm run dev:*)",
+      "Read(//Users/augenstern/development/personal/**)",
+      "Bash(pkill:*)",
+      "Bash(kill:*)"
     ],
     "deny": [],
     "ask": []
