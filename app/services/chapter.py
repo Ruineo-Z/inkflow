@@ -145,7 +145,7 @@ class ChapterService:
 
         # 获取较早章节的摘要
         result = await self.db.execute(
-            select(Chapter.chapter_number, Chapter.title, Chapter.summary)
+            select(Chapter.id, Chapter.chapter_number, Chapter.title, Chapter.summary)
             .where(
                 Chapter.novel_id == novel_id,
                 Chapter.chapter_number <= (latest_chapter_num - exclude_recent)
@@ -156,6 +156,7 @@ class ChapterService:
         summaries = []
         for row in result.fetchall():
             summaries.append({
+                "id": row.id,
                 "chapter_number": row.chapter_number,
                 "title": row.title,
                 "summary": row.summary
