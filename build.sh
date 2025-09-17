@@ -24,22 +24,18 @@ if ! curl -s --connect-timeout 10 https://index.docker.io/v1/ > /dev/null; then
     echo "警告: 网络连接可能有问题，构建可能会失败"
 fi
 
-# 构建后端镜像
-echo "构建后端镜像..."
-docker build --no-cache -t $DOCKER_USERNAME/inkflow-backend:$BACKEND_VERSION .
-docker tag $DOCKER_USERNAME/inkflow-backend:$BACKEND_VERSION $DOCKER_USERNAME/inkflow-backend:latest
+# 创建并使用buildx构建器 (支持多平台)
+echo "设置多平台构建器..."
+docker buildx create --use --name multiarch-builder 2>/dev/null || docker buildx use multiarch-builder
+docker buildx inspect --bootstrap
 
-# 构建前端镜像
-echo "构建前端镜像..."
-docker build --no-cache -t $DOCKER_USERNAME/inkflow-frontend:$FRONTEND_VERSION -f frontend/Dockerfile frontend/
-docker tag $DOCKER_USERNAME/inkflow-frontend:$FRONTEND_VERSION $DOCKER_USERNAME/inkflow-frontend:latest
+# 构建并推送后端镜像 (针对Linux/amd64平台)
+echo "构建并推送后端镜像..."
+docker buildx build --platform linux/amd64 --no-cache -t $DOCKER_USERNAME/inkflow-backend:$BACKEND_VERSION -t $DOCKER_USERNAME/inkflow-backend:latest . --push
 
-# 推送镜像
-echo "推送镜像到 DockerHub..."
-docker push $DOCKER_USERNAME/inkflow-backend:$BACKEND_VERSION
-docker push $DOCKER_USERNAME/inkflow-backend:latest
-docker push $DOCKER_USERNAME/inkflow-frontend:$FRONTEND_VERSION
-docker push $DOCKER_USERNAME/inkflow-frontend:latest
+# 构建并推送前端镜像 (针对Linux/amd64平台)
+echo "构建并推送前端镜像..."
+docker buildx build --platform linux/amd64 --no-cache -t $DOCKER_USERNAME/inkflow-frontend:$FRONTEND_VERSION -t $DOCKER_USERNAME/inkflow-frontend:latest -f frontend/Dockerfile frontend/ --push
 
 echo "构建和推送完成!"
 echo "后端镜像: $DOCKER_USERNAME/inkflow-backend:$BACKEND_VERSION"
