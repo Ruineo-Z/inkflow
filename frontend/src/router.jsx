@@ -59,6 +59,10 @@ export const router = createBrowserRouter([
   },
   {
     path: '/create',
+    element: <Navigate to="/novels/create" replace />
+  },
+  {
+    path: '/novels/create',
     element: (
       <AuthGuard>
         <CreateNovelPage />

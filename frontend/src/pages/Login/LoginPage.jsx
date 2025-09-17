@@ -14,13 +14,34 @@ const LoginPage = () => {
     setIsLoading(true);
     try {
       await login(values);
-      Toast.show({ content: '登录成功！', position: 'top' });
+      // 使用原生alert作为临时解决方案
+      alert('✅ 登录成功！');
       navigate('/home', { replace: true });
     } catch (error) {
-      Toast.show({
-        content: error.message || '登录失败，请检查邮箱和密码',
-        position: 'top'
-      });
+      console.error('登录错误:', error);
+
+      // 根据不同错误类型显示不同的提示信息
+      let errorMessage = '登录失败，请检查邮箱和密码';
+
+      if (error.message === 'Incorrect email or password') {
+        errorMessage = '❌ 邮箱或密码错误，请重新输入';
+      } else if (error.message.includes('email')) {
+        errorMessage = '❌ 邮箱格式不正确';
+      } else if (error.message.includes('password')) {
+        errorMessage = '❌ 密码格式不正确';
+      } else if (error.message) {
+        errorMessage = `❌ ${error.message}`;
+      }
+
+      // 使用原生alert作为临时解决方案，因为Toast有React兼容性问题
+      alert(errorMessage);
+
+      // TODO: 等待Ant Design Mobile修复React 19兼容性后恢复Toast
+      // Toast.show({
+      //   content: errorMessage,
+      //   position: 'top',
+      //   duration: 4000
+      // });
     } finally {
       setIsLoading(false);
     }

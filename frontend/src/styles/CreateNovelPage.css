@@ -1,0 +1,513 @@
+/* 基础页面结构 */
+.create-novel-page {
+  min-height: 100vh;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 使用与NovelListPage相同的导航栏样式 */
+.custom-navbar {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+  position: relative;
+}
+
+.nav-back-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  color: #333;
+  margin-right: 1rem;
+}
+
+.nav-back-btn:hover {
+  background: #f5f5f5;
+}
+
+.custom-navbar h1 {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
+}
+
+/* 自定义Toast */
+.custom-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  z-index: 10000;
+  font-size: 0.9rem;
+}
+
+/* 主要内容区域 */
+.create-content {
+  flex: 1;
+  padding: 1.5rem 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* 头部区域 */
+.create-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.create-header h2 {
+  font-size: 1.5rem;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.create-header p {
+  color: #666;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* 类型选择区域 */
+.genre-selection {
+  margin-bottom: 2rem;
+}
+
+.genre-selection h3 {
+  font-size: 1.2rem;
+  color: #333;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+
+.genre-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.genre-card {
+  border: 2px solid #f0f0f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.genre-card:hover {
+  border-color: #1890ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.15);
+}
+
+.genre-card.selected {
+  border-color: #1890ff;
+  background: #f6fcff;
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+}
+
+.genre-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.genre-name {
+  font-size: 1.1rem;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.genre-description {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.4;
+}
+
+.genre-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.feature-tag {
+  background: #f0f8ff;
+  color: #1890ff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.genre-card.selected .feature-tag {
+  background: #1890ff;
+  color: #ffffff;
+}
+
+/* 额外要求区域 */
+.requirements-section {
+  margin-bottom: 2rem;
+}
+
+.requirements-section h3 {
+  font-size: 1.2rem;
+  color: #333;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+
+.optional {
+  font-size: 0.9rem;
+  color: #999;
+  font-weight: 400;
+}
+
+.requirements-input {
+  width: 100%;
+  min-height: 120px;
+  padding: 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.requirements-input:focus {
+  outline: none;
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.requirements-input::placeholder {
+  color: #999;
+}
+
+.char-count {
+  text-align: right;
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: 0.5rem;
+}
+
+/* 创建按钮区域 */
+.create-actions {
+  text-align: center;
+}
+
+.create-btn {
+  background: #1890ff;
+  color: #ffffff;
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 180px;
+  justify-content: center;
+}
+
+.create-btn:hover:not(:disabled) {
+  background: #40a9ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+.create-btn:disabled {
+  background: #d9d9d9;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.loading-spinner {
+  font-size: 1.2rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 结果页面样式 */
+.result-content {
+  flex: 1;
+  padding: 1.5rem 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.success-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.success-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.success-header h2 {
+  font-size: 1.6rem;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+}
+
+.success-header p {
+  color: #666;
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* 小说预览 */
+.novel-preview {
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.preview-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.genre-badge {
+  display: inline-block;
+  background: #f0f8ff;
+  color: #1890ff;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.novel-title {
+  font-size: 1.4rem;
+  color: #333;
+  margin: 0;
+  font-weight: 600;
+}
+
+.preview-section {
+  margin-bottom: 1.5rem;
+}
+
+.preview-section:last-child {
+  margin-bottom: 0;
+}
+
+.preview-section h4 {
+  font-size: 1.1rem;
+  color: #333;
+  margin: 0 0 0.75rem 0;
+  font-weight: 600;
+}
+
+.novel-summary {
+  color: #666;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.world-setting p,
+.protagonist-info p {
+  color: #666;
+  line-height: 1.5;
+  margin: 0 0 0.5rem 0;
+}
+
+.world-setting p:last-child,
+.protagonist-info p:last-child {
+  margin-bottom: 0;
+}
+
+/* 结果操作按钮 */
+.result-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.primary-btn {
+  background: #1890ff;
+  color: #ffffff;
+  border: none;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.primary-btn:hover {
+  background: #40a9ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+}
+
+.secondary-btn {
+  background: #ffffff;
+  color: #666;
+  border: 1px solid #d9d9d9;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+  transform: translateY(-1px);
+}
+
+/* ================================
+   平板端适配 (768px - 1023px)
+   ================================ */
+@media (min-width: 768px) {
+  .create-content,
+  .result-content {
+    padding: 2rem;
+  }
+
+  .genre-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .genre-card {
+    padding: 2rem;
+  }
+
+  .genre-icon {
+    font-size: 3rem;
+  }
+
+  .requirements-input {
+    min-height: 140px;
+  }
+
+  .result-actions {
+    gap: 1.5rem;
+  }
+
+  .primary-btn,
+  .secondary-btn {
+    padding: 1.2rem 2rem;
+    font-size: 1.1rem;
+  }
+}
+
+/* ================================
+   桌面端适配 (1024px+)
+   ================================ */
+@media (min-width: 1024px) {
+  .create-content,
+  .result-content {
+    padding: 2.5rem 3rem;
+    max-width: 900px;
+  }
+
+  .create-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .header-icon {
+    font-size: 3.5rem;
+  }
+
+  .create-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .create-header p {
+    font-size: 1.1rem;
+  }
+
+  .genre-selection,
+  .requirements-section {
+    margin-bottom: 2.5rem;
+  }
+
+  .novel-preview {
+    padding: 2rem;
+  }
+
+  .novel-title {
+    font-size: 1.6rem;
+  }
+}
+
+/* ================================
+   超小屏幕适配 (320px - 374px)
+   ================================ */
+@media (max-width: 374px) {
+  .create-content,
+  .result-content {
+    padding: 1rem 0.8rem;
+  }
+
+  .genre-card {
+    padding: 1.2rem;
+  }
+
+  .genre-icon {
+    font-size: 2rem;
+  }
+
+  .create-btn {
+    padding: 0.9rem 1.5rem;
+    font-size: 1rem;
+    min-width: 160px;
+  }
+
+  .result-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .primary-btn,
+  .secondary-btn {
+    padding: 0.9rem 1.2rem;
+    font-size: 0.95rem;
+  }
+}

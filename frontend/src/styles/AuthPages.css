@@ -1,85 +1,122 @@
+/* 基础页面结构 */
 .auth-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #ffffff;
   display: flex;
   flex-direction: column;
 }
 
+/* 主要内容区域 - 移动端优先设计 */
 .auth-content {
   flex: 1;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
   padding: 2rem 1rem;
+  gap: 1.5rem;
+  width: 100%;
 }
 
+/* 头部区域 */
 .auth-header {
   text-align: center;
-  margin-bottom: 2rem;
-  color: white;
+  color: #333;
+  width: 100%;
+  margin-top: 0;
 }
 
 .auth-header .logo {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .auth-header h1 {
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   margin-bottom: 0.5rem;
-  color: white;
+  color: #333;
+  font-weight: 300;
 }
 
 .auth-header p {
-  opacity: 0.9;
-  color: white;
+  opacity: 0.7;
+  color: #666;
+  font-size: 0.9rem;
 }
 
+/* 表单容器 - 移动端基础样式 */
 .auth-form {
-  background: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  border-radius: 0.5rem;
+  padding: 1.5rem 1rem;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+  width: 100%;
+  max-width: 100%;
 }
 
 .auth-form h2 {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   color: #333;
-  font-size: 1.3rem;
+  font-size: 1.2rem;
+  font-weight: 500;
 }
 
+/* 表单项样式 */
 .auth-form .adm-form-item {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.2rem;
 }
 
 .auth-form .adm-form-item-label {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: #666;
   margin-bottom: 0.5rem;
+  font-weight: 500;
 }
 
 .auth-form .adm-input {
-  padding: 1rem;
+  padding: 0.9rem;
   font-size: 1rem;
   border-radius: 0.5rem;
   border: 1px solid #e0e0e0;
+  transition: border-color 0.2s ease;
 }
 
+.auth-form .adm-input:focus {
+  border-color: #333;
+  outline: none;
+}
+
+/* 按钮样式 */
 .auth-form .adm-button {
   margin-top: 1rem;
-  padding: 1rem;
-  font-size: 1.1rem;
+  padding: 0.9rem;
+  font-size: 1rem;
   font-weight: 600;
+  background-color: #333 !important;
+  border-color: #333 !important;
+  color: #ffffff !important;
+  border-radius: 0.5rem;
+  min-height: 48px; /* 移动端触摸友好 */
 }
 
+.auth-form .adm-button:hover {
+  background-color: #555 !important;
+  border-color: #555 !important;
+}
+
+/* 底部链接 */
 .auth-footer {
   text-align: center;
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   color: #666;
+  font-size: 0.9rem;
+  padding-bottom: 1rem; /* 确保移动端底部有足够空间 */
 }
 
 .auth-footer a {
-  color: #667eea;
+  color: #333;
   text-decoration: none;
   margin-left: 0.5rem;
   font-weight: 600;
@@ -89,15 +126,186 @@
   text-decoration: underline;
 }
 
-/* 响应式设计 */
-@media (min-width: 768px) {
+/* ================================
+   平板端适配 (768px - 1023px)
+   ================================ */
+@media (min-width: 768px) and (max-width: 1023px) {
   .auth-content {
     justify-content: center;
-    align-items: center;
+    padding: 2rem;
+    gap: 2rem;
+  }
+
+  .auth-header .logo {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  .auth-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .auth-header p {
+    font-size: 1rem;
   }
 
   .auth-form {
-    width: 100%;
-    max-width: 400px;
+    max-width: 450px;
+    padding: 2.5rem 2rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  .auth-form h2 {
+    font-size: 1.4rem;
+    margin-bottom: 2rem;
+  }
+
+  .auth-form .adm-form-item {
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-form .adm-input {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+
+  .auth-form .adm-button {
+    padding: 1.1rem;
+    font-size: 1.1rem;
+  }
+
+  .auth-footer {
+    font-size: 1rem;
+  }
+}
+
+/* ================================
+   桌面端适配 (1024px+)
+   ================================ */
+@media (min-width: 1024px) {
+  .auth-content {
+    justify-content: center;
+    padding: 2rem 4rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    gap: 2.5rem;
+  }
+
+  .auth-header {
+    margin-top: 0;
+  }
+
+  .auth-header .logo {
+    font-size: 3.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .auth-header h1 {
+    font-size: 2rem;
+  }
+
+  .auth-header p {
+    font-size: 1.1rem;
+  }
+
+  .auth-form {
+    max-width: 520px;
+    padding: 3rem 2.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e8e8e8;
+  }
+
+  .auth-form h2 {
+    font-size: 1.5rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .auth-form .adm-form-item {
+    margin-bottom: 1.8rem;
+  }
+
+  .auth-form .adm-form-item-label {
+    font-size: 1rem;
+  }
+
+  .auth-form .adm-input {
+    padding: 1.2rem;
+    font-size: 1rem;
+    border-radius: 0.6rem;
+  }
+
+  .auth-form .adm-button {
+    margin-top: 1.5rem;
+    padding: 1.3rem;
+    font-size: 1.1rem;
+    border-radius: 0.6rem;
+  }
+
+  .auth-footer {
+    font-size: 1rem;
+    margin-top: 2rem;
+  }
+}
+
+/* ================================
+   大屏桌面端适配 (1440px+)
+   ================================ */
+@media (min-width: 1440px) {
+  .auth-content {
+    gap: 3rem;
+  }
+
+  .auth-header .logo {
+    font-size: 4rem;
+  }
+
+  .auth-header h1 {
+    font-size: 2.2rem;
+  }
+
+  .auth-form {
+    max-width: 580px;
+    padding: 3.5rem 3rem;
+  }
+
+  .auth-form h2 {
+    font-size: 1.6rem;
+  }
+
+  .auth-form .adm-input {
+    padding: 1.3rem;
+    font-size: 1.1rem;
+  }
+
+  .auth-form .adm-button {
+    padding: 1.4rem;
+    font-size: 1.2rem;
+  }
+}
+
+/* ================================
+   超小屏幕适配 (320px - 374px)
+   ================================ */
+@media (max-width: 374px) {
+  .auth-content {
+    padding: 0.5rem;
+  }
+
+  .auth-header .logo {
+    font-size: 2rem;
+  }
+
+  .auth-header h1 {
+    font-size: 1.3rem;
+  }
+
+  .auth-form {
+    padding: 1.2rem 0.8rem;
+  }
+
+  .auth-form h2 {
+    font-size: 1.1rem;
   }
 }

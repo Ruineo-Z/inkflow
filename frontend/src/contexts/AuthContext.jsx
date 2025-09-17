@@ -48,27 +48,48 @@ export const AuthProvider = ({ children }) => {
 
   // 登录
   const login = async (credentials) => {
-    const response = await fetch('/api/v1/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+    let response;
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Login failed');
+    try {
+      response = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+
+        // 根据HTTP状态码提供更具体的错误信息
+        if (response.status === 401) {
+          throw new Error(error.detail || 'Incorrect email or password');
+        } else if (response.status === 422) {
+          throw new Error('请检查邮箱格式和密码长度');
+        } else if (response.status >= 500) {
+          throw new Error('服务器错误，请稍后重试');
+        } else {
+          throw new Error(error.detail || 'Login failed');
+        }
+      }
+
+      const data = await response.json();
+
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+
+      const userInfo = await fetchUserProfile();
+      setUser(userInfo);
+      return userInfo;
+
+    } catch (fetchError) {
+      // 网络错误处理
+      if (fetchError instanceof TypeError) {
+        throw new Error('网络连接失败，请检查网络连接');
+      }
+      throw fetchError;
     }
-
-    const data = await response.json();
-
-    localStorage.setItem('access_token', data.access_token);
-    localStorage.setItem('refresh_token', data.refresh_token);
-
-    const userInfo = await fetchUserProfile();
-    setUser(userInfo);
-    return userInfo;
   };
 
   // 注册

@@ -1,29 +1,31 @@
+version: '3.8'
+
 services:
+  frontend:
+    image: ruinow/inkflow-frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    image: ruinow/inkflow-backend:latest
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://inkflow:${POSTGRES_PASSWORD}@postgres:5432/inkflow
+      - SECRET_KEY=${SECRET_KEY}
+      - KIMI_API_KEY=${KIMI_API_KEY}
+      - ALLOWED_ORIGINS=*
+    depends_on:
+      - postgres
+
   postgres:
     image: postgres:16
-    container_name: inkflow-postgres
-    restart: unless-stopped
     environment:
-      POSTGRES_DB: inkflow
-      POSTGRES_USER: inkflow
-      POSTGRES_PASSWORD: inkflow123
-      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
-    ports:
-      - "5432:5432"
+      - POSTGRES_DB=inkflow
+      - POSTGRES_USER=inkflow
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U inkflow -d inkflow"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - inkflow-network
 
 volumes:
   postgres_data:
-
-networks:
-  inkflow-network:
-    driver: bridge
