@@ -23,7 +23,8 @@
       "Bash(docker system prune:*)",
       "Bash(docker manifest:*)",
       "Bash(gh run view:*)",
-      "Bash(ssh:*)"
+      "Bash(ssh:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ],
     "deny": [],
     "ask": []

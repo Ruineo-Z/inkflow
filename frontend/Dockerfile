@@ -32,5 +32,5 @@ WORKDIR /app
 
 EXPOSE 3000
 
-# 使用serve提供静态文件，支持SPA路由
-CMD ["serve", "-s", ".", "-l", "3000"]
+# 使用serve提供静态文件，支持SPA路由，绑定到所有接口
+CMD ["serve", "-s", ".", "-l", "tcp://0.0.0.0:3000"]
