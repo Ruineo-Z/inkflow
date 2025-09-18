@@ -1,4 +1,4 @@
-# 简化版前端Dockerfile
+# 前端Dockerfile - 使用简单的静态文件服务
 FROM node:20-alpine AS builder
 
 WORKDIR /app
@@ -19,15 +19,18 @@ COPY . .
 # 构建
 RUN npm run build
 
-# 生产阶段
-FROM nginx:alpine
+# 生产阶段 - 使用Node.js serve静态文件
+FROM node:20-alpine
+
+# 安装serve
+RUN npm install -g serve
 
 # 复制构建结果
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /app
 
-# 复制nginx配置
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-EXPOSE 80
+EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+# 使用serve提供静态文件，支持SPA路由
+CMD ["serve", "-s", ".", "-l", "3000"]
