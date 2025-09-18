@@ -2,19 +2,22 @@
 
 ## 🚀 快速部署
 
-### 1. 准备环境变量
+### 1. 准备数据库
+确保你有一个PostgreSQL数据库实例，并获取连接信息。
+
+### 2. 配置环境变量
 ```bash
 # 复制环境变量模板
 cp .env.example .env
 
-# 编辑环境变量（必须修改以下值）
+# 编辑环境变量
 vim .env
 ```
 
-### 2. 必须修改的环境变量
+### 3. 必须配置的环境变量
 ```bash
-# 数据库密码（必须修改为强密码）
-POSTGRES_PASSWORD=your-secure-password-here
+# 数据库连接URI
+DATABASE_URL=postgresql+asyncpg://username:password@your-postgres-host:5432/inkflow
 
 # JWT密钥（必须修改为随机字符串）
 SECRET_KEY=your-super-secret-jwt-key-please-change-this-in-production
@@ -23,7 +26,7 @@ SECRET_KEY=your-super-secret-jwt-key-please-change-this-in-production
 KIMI_API_KEY=your-kimi-api-key-here
 ```
 
-### 3. 部署服务
+### 4. 启动服务
 ```bash
 # 拉取最新镜像并启动服务
 docker-compose pull
@@ -31,14 +34,11 @@ docker-compose up -d
 
 # 查看服务状态
 docker-compose ps
-
-# 查看日志
-docker-compose logs -f
 ```
 
-### 4. 验证部署
-- 前端访问：http://your-server-ip
-- 后端API：http://your-server-ip/api/v1/
+### 5. 验证部署
+- 前端访问：http://your-server-ip:3030
+- 后端API：http://your-server-ip:8000
 - 健康检查：http://your-server-ip/health
 
 ## 🔧 环境变量说明
