@@ -14,7 +14,14 @@
       "Bash(git add:*)",
       "Bash(git push:*)",
       "Bash(git commit:*)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(docker stop inkflow-frontend-container)",
+      "Bash(docker rm inkflow-frontend-container)",
+      "Bash(docker pull:*)",
+      "Bash(gh workflow:*)",
+      "Bash(gh run list:*)",
+      "Bash(docker system prune:*)",
+      "Bash(docker manifest:*)"
     ],
     "deny": [],
     "ask": []

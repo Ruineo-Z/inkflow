@@ -5,7 +5,7 @@ services:
     container_name: inkflow-frontend-container
     image: ruinow/inkflow-frontend:latest
     ports:
-      - "3030:80"
+      - "3030:3000"
     depends_on:
       - inkflow_backend
     networks:
