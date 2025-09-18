@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   inkflow_frontend:
     container_name: inkflow-frontend-container
@@ -5,11 +7,19 @@ services:
     ports:
       - "3030:80"
     depends_on:
-      - backend
+      - inkflow_backend
+    networks:
+      - default-network
 
   inkflow_backend:
-    container_name: inkflow_backend_container
+    container_name: inkflow-backend-container
     image: ruinow/inkflow-backend:latest
     ports:
       - "8000:8000"
     env_file: .env
+    networks:
+      - default-network
+
+networks:
+  default-network:
+    external: true
