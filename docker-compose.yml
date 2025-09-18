@@ -1,14 +1,14 @@
-version: '3.8'
-
 services:
-  frontend:
+  inkflow_frontend:
+    container_name: inkflow-frontend-container
     image: ruinow/inkflow-frontend:latest
     ports:
       - "3030:80"
     depends_on:
       - backend
 
-  backend:
+  inkflow_backend:
+    container_name: inkflow_backend_container
     image: ruinow/inkflow-backend:latest
     ports:
       - "8000:8000"
