@@ -12,7 +12,8 @@
       "Bash(docker login:*)",
       "Bash(docker logout:*)",
       "Bash(git add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

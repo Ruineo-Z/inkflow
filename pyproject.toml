@@ -7,7 +7,6 @@ name = "inkflow"
 version = "0.1.0"
 description = "InkFlow - AI-powered writing assistant"
 authors = [{name = "InkFlow Team"}]
-readme = "README.md"
 requires-python = ">=3.12"
 classifiers = [
     "Development Status :: 3 - Alpha",
