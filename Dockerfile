@@ -9,13 +9,16 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV UV_CACHE_DIR=/tmp/uv-cache
 
-# 安装系统依赖
-RUN apt-get update && apt-get install -y \
+# 安装系统依赖 (添加重试机制)
+RUN apt-get update || (sleep 5 && apt-get update) && \
+    apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libpq-dev \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # 安装uv
 RUN pip install uv
