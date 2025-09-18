@@ -23,8 +23,8 @@ RUN apt-get update || (sleep 5 && apt-get update) && \
 # 安装uv
 RUN pip install uv
 
-# 复制依赖文件
-COPY pyproject.toml uv.lock ./
+# 复制依赖文件和README.md (pyproject.toml需要)
+COPY pyproject.toml uv.lock README.md ./
 
 # 安装Python依赖
 RUN uv sync --frozen --no-dev
