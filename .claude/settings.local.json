@@ -21,7 +21,9 @@
       "Bash(gh workflow:*)",
       "Bash(gh run list:*)",
       "Bash(docker system prune:*)",
-      "Bash(docker manifest:*)"
+      "Bash(docker manifest:*)",
+      "Bash(gh run view:*)",
+      "Bash(ssh:*)"
     ],
     "deny": [],
     "ask": []
