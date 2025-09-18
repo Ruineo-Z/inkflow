@@ -11,18 +11,27 @@ services:
   backend:
     image: ruinow/inkflow-backend:latest
     environment:
-      - DATABASE_URL=postgresql+asyncpg://inkflow:${POSTGRES_PASSWORD}@postgres:5432/inkflow
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-inkflow}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-inkflow}
       - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - ALGORITHM=${ALGORITHM:-HS256}
+      - DEBUG=${DEBUG:-false}
+      - TESTING=${TESTING:-false}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
       - KIMI_API_KEY=${KIMI_API_KEY}
-      - ALLOWED_ORIGINS=*
+      - KIMI_BASE_URL=${KIMI_BASE_URL:-https://api.moonshot.cn/v1}
+      - KIMI_MODEL=${KIMI_MODEL:-moonshot-v1-8k}
+      - KIMI_MAX_TOKENS=${KIMI_MAX_TOKENS:-2000}
+      - KIMI_TEMPERATURE=${KIMI_TEMPERATURE:-0.7}
+      - KIMI_TIMEOUT=${KIMI_TIMEOUT:-30}
     depends_on:
       - postgres
 
   postgres:
     image: postgres:16
     environment:
-      - POSTGRES_DB=inkflow
-      - POSTGRES_USER=inkflow
+      - POSTGRES_DB=${POSTGRES_DB:-inkflow}
+      - POSTGRES_USER=${POSTGRES_USER:-inkflow}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
