@@ -34,9 +34,11 @@ COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
 
-# 创建非root用户
+# 创建非root用户并设置权限
 RUN useradd --create-home --shell /bin/bash app && \
-    chown -R app:app /app
+    chown -R app:app /app && \
+    mkdir -p /tmp/uv-cache && \
+    chown -R app:app /tmp/uv-cache
 USER app
 
 # 暴露端口
