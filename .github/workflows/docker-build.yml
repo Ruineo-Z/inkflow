@@ -48,11 +48,10 @@ jobs:
         file: ./frontend/Dockerfile
         platforms: linux/amd64
         push: true
+        no-cache: true
         tags: |
           ${{ secrets.DOCKER_USERNAME }}/inkflow-frontend:${{ steps.versions.outputs.frontend_version }}
           ${{ secrets.DOCKER_USERNAME }}/inkflow-frontend:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
 
     - name: Output image tags
       run: |
