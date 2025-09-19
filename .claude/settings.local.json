@@ -28,7 +28,15 @@
       "mcp__playwright__browser_navigate",
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_fill_form",
-      "mcp__playwright__browser_network_requests"
+      "mcp__playwright__browser_network_requests",
+      "Bash(source:*)",
+      "Bash(uvicorn:*)",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_close",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "mcp__playwright__browser_handle_dialog",
+      "Bash(/bashes)"
     ],
     "deny": [],
     "ask": []

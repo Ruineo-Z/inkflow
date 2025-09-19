@@ -1,6 +1,7 @@
 // API 基础配置和通用方法
-// 运行时配置API地址，通过启动脚本注入到页面中
-const API_BASE_URL = (typeof window !== 'undefined' && window.__API_BASE_URL__)
+// API地址配置：优先使用构建时环境变量，然后是运行时注入，最后是默认值
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  || (typeof window !== 'undefined' && window.__API_BASE_URL__ && window.__API_BASE_URL__ !== '__API_BASE_URL__' ? window.__API_BASE_URL__ : null)
   || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/api/v1`;
 
 class ApiService {
