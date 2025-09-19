@@ -109,7 +109,12 @@ const ReadingPage = () => {
   // 生成下一章节（流式处理）
   const generateNextChapter = async () => {
     try {
-      const response = await fetch(`/api/v1/novels/${novelId}/chapters/generate`, {
+      // 获取API基地址
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
+        || (typeof window !== 'undefined' && window.__API_BASE_URL__ && window.__API_BASE_URL__ !== '__API_BASE_URL__' ? window.__API_BASE_URL__ : null)
+        || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/api/v1`;
+
+      const response = await fetch(`${apiBaseUrl}/novels/${novelId}/chapters/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
