@@ -24,7 +24,11 @@
       "Bash(docker manifest:*)",
       "Bash(gh run view:*)",
       "Bash(ssh:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_network_requests"
     ],
     "deny": [],
     "ask": []
