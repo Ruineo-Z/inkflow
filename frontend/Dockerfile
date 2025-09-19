@@ -28,9 +28,13 @@ RUN npm install -g serve
 # 复制构建结果
 COPY --from=builder /app/dist /app
 
+# 复制启动脚本
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 WORKDIR /app
 
 EXPOSE 3000
 
-# 使用serve提供静态文件，支持SPA路由
-CMD ["serve", "-s", ".", "-l", "tcp://0.0.0.0:3000"]
+# 使用启动脚本支持运行时配置
+CMD ["/app/entrypoint.sh"]
