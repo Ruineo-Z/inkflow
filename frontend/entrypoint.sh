@@ -13,14 +13,20 @@ fi
 
 # 显示替换前的内容用于调试
 echo "🔍 替换前的内容:"
-grep "__API_BASE_URL__" /app/index.html || echo "未找到 __API_BASE_URL__ 占位符"
+grep "{{API_BASE_URL_PLACEHOLDER}}" /app/index.html || echo "未找到占位符"
 
 # 替换index.html中的API配置
-sed -i "s|__API_BASE_URL__|$API_URL|g" /app/index.html
+sed -i "s|{{API_BASE_URL_PLACEHOLDER}}|$API_URL|g" /app/index.html
 
 # 显示替换后的内容用于调试
 echo "🔍 替换后的内容:"
-grep -n "window\.__API_BASE_URL__" /app/index.html || echo "替换后未找到API配置"
+if grep -q "{{API_BASE_URL_PLACEHOLDER}}" /app/index.html; then
+    echo "❌ 替换失败，仍存在占位符:"
+    grep -n "{{API_BASE_URL_PLACEHOLDER}}" /app/index.html
+else
+    echo "✅ 替换成功，当前API配置:"
+    grep -n "window\.__API_BASE_URL__" /app/index.html
+fi
 
 echo "✅ 配置完成，启动服务..."
 
