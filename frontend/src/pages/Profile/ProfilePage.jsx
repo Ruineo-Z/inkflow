@@ -1,4 +1,4 @@
-import { NavBar, Button, Toast } from 'antd-mobile';
+import { NavBar, Button } from 'antd-mobile';
 import { LeftOutline } from 'antd-mobile-icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,7 +9,7 @@ const ProfilePage = () => {
 
   const handleLogout = async () => {
     await logout();
-    Toast.show({ content: '已退出登录', position: 'top' });
+    alert('✅ 已退出登录');
     navigate('/login', { replace: true });
   };
 

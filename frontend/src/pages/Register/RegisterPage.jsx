@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Form, Input, Button, Toast, NavBar } from 'antd-mobile';
+import { Form, Input, Button, NavBar } from 'antd-mobile';
 import { LeftOutline } from 'antd-mobile-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/AuthPages.css';
@@ -13,7 +13,7 @@ const RegisterPage = () => {
 
   const handleSubmit = async (values) => {
     if (values.password !== values.confirmPassword) {
-      Toast.show({ content: '两次输入的密码不一致', position: 'top' });
+      alert('❌ 两次输入的密码不一致');
       return;
     }
 
@@ -21,13 +21,10 @@ const RegisterPage = () => {
     try {
       const { confirmPassword, ...registerData } = values;
       await register(registerData);
-      Toast.show({ content: '注册成功！', position: 'top' });
+      alert('✅ 注册成功！');
       navigate('/home', { replace: true });
     } catch (error) {
-      Toast.show({
-        content: error.message || '注册失败，请稍后重试',
-        position: 'top'
-      });
+      alert(`❌ ${error.message || '注册失败，请稍后重试'}`);
     } finally {
       setIsLoading(false);
     }
