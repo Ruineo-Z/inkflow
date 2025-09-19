@@ -1,5 +1,10 @@
 // API 基础配置和通用方法
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (
+  // 生产环境使用相对路径，通过nginx代理
+  window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000/api/v1'  // 本地开发
+    : '/api/v1'  // 生产环境，需要nginx代理
+);
 
 class ApiService {
   static getAuthToken() {
