@@ -18,6 +18,7 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    user: root  # 临时以root用户运行解决权限问题
     networks:
       - default-network
 
