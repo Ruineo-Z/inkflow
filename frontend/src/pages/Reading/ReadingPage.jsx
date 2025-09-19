@@ -88,6 +88,20 @@ const ReadingPage = () => {
   const handleConfirmChoice = async () => {
     if (!selectedOption || !currentChapter) return;
 
+    // 检查章节ID是否有效
+    if (!currentChapter.id || currentChapter.id === 'undefined') {
+      console.error('Invalid chapter ID:', currentChapter.id);
+      showToast('章节信息错误，请刷新页面重试');
+      return;
+    }
+
+    // 检查选项ID是否有效
+    if (!selectedOption.id || selectedOption.id === 'undefined') {
+      console.error('Invalid option ID:', selectedOption.id);
+      showToast('选项信息错误，请重新选择');
+      return;
+    }
+
     try {
       // 保存用户选择
       await ChapterApi.saveUserChoice(currentChapter.id, selectedOption.id);
@@ -406,7 +420,7 @@ const ReadingPage = () => {
   }
 
   // 空章节状态 - 显示生成第一章
-  if (chapters.length === 0) {
+  if (chapters.length === 0 && !generatingChapter && !currentChapter) {
     return (
       <div className="reading-page">
         <nav className="custom-navbar">
@@ -425,16 +439,108 @@ const ReadingPage = () => {
               onClick={handleGenerateFirstChapter}
               disabled={generatingChapter}
             >
-              {generatingChapter ? (
-                <>
-                  <span className="loading-spinner">⚡</span>
-                  AI正在创作第一章...
-                </>
-              ) : (
-                '🚀 开始生成第一章'
-              )}
+              🚀 开始生成第一章
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 第一章生成中的流式显示状态
+  if (chapters.length === 0 && (generatingChapter || currentChapter)) {
+    return (
+      <div className="reading-page">
+        <nav className="custom-navbar">
+          <button className="nav-back-btn" onClick={() => navigate('/novels')}>
+            ←
+          </button>
+          <h1>{novel?.title || '小说阅读'}</h1>
+        </nav>
+        <div className="reading-content">
+          {/* 显示正在生成的第一章内容 */}
+          {currentChapter && (
+            <div className="chapter-content">
+              <div className="chapter-header">
+                <h2 className="chapter-title">
+                  {currentChapter.title || '第一章'}
+                </h2>
+                {currentChapter.isStreaming && (
+                  <p className="streaming-indicator">✨ AI正在创作中...</p>
+                )}
+                {currentChapter.error && (
+                  <p className="error-indicator">❌ {currentChapter.error}</p>
+                )}
+              </div>
+
+              <div className="chapter-text">
+                {currentChapter.content && currentChapter.content.trim() ? (
+                  (() => {
+                    // 简化段落处理逻辑，确保实时渲染效果
+                    let contentText = currentChapter.content.trim();
+
+                    // 将内容按段落分割 - 支持单换行符和双换行符
+                    const paragraphs = contentText
+                      .split(/\n+/) // 按换行符分割
+                      .filter(para => para.trim()) // 过滤空段落
+                      .map(para => para.trim()); // 清理首尾空白
+
+                    // 如果没有分割成功，直接显示整个内容
+                    if (paragraphs.length === 0) {
+                      return (
+                        <p className="chapter-paragraph">
+                          {contentText}
+                          {currentChapter.isStreaming && (
+                            <span className="typing-cursor">|</span>
+                          )}
+                        </p>
+                      );
+                    }
+
+                    // 渲染每个段落
+                    return paragraphs.map((paragraph, index) => {
+                      const isLastParagraph = index === paragraphs.length - 1;
+                      const shouldShowCursor = currentChapter.isStreaming && isLastParagraph;
+
+                      return (
+                        <p key={index} className="chapter-paragraph">
+                          {paragraph}
+                          {shouldShowCursor && (
+                            <span className="typing-cursor">|</span>
+                          )}
+                        </p>
+                      );
+                    });
+                  })()
+                ) : (
+                  <p className="no-content">
+                    {currentChapter.isStreaming ? '✨ AI正在构思章节内容...' : '章节内容加载中...'}
+                  </p>
+                )}
+              </div>
+
+              {/* 错误状态下的重试按钮 */}
+              {currentChapter.error && !currentChapter.isStreaming && (
+                <div className="error-actions">
+                  <button
+                    className="retry-btn"
+                    onClick={handleGenerateFirstChapter}
+                  >
+                    重新生成第一章
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 只有加载状态，还没有章节内容 */}
+          {generatingChapter && !currentChapter && (
+            <div className="empty-chapters">
+              <div className="loading-spinner">⚡</div>
+              <h2>AI正在创作第一章...</h2>
+              <p>请稍等，精彩内容即将呈现</p>
+            </div>
+          )}
         </div>
       </div>
     );

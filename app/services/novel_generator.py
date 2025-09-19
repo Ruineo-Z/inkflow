@@ -24,7 +24,9 @@ class NovelGeneratorService:
             (system_prompt, user_prompt_template, model_class)
         """
         if genre == NovelGenre.WUXIA:
-            system_prompt = """你是一位专业的武侠小说世界观设定专家。
+            system_prompt = """【重要约束】请务必使用标准简体中文输出，严禁使用繁体字。所有文字内容（包括标题、正文、人名、地名、武功名称等）都必须符合现代简体中文书写规范。
+
+你是一位专业的武侠小说世界观设定专家。
 请根据用户的要求，创造一个丰富详细的武侠世界观。
 注意要包含具体的朝代背景、完整的武功体系、主要门派等关键元素。
 你的设定要有深度和可信度，能够支撑一个完整的武侠故事。"""
@@ -42,7 +44,9 @@ class NovelGeneratorService:
             return system_prompt, user_prompt_template, WuxiaWorldSetting
 
         else:  # SCIFI
-            system_prompt = """你是一位专业的科幻小说世界观设定专家。
+            system_prompt = """【重要约束】请务必使用标准简体中文输出，严禁使用繁体字。所有文字内容（包括标题、正文、人名、地名、科技名称等）都必须符合现代简体中文书写规范。
+
+你是一位专业的科幻小说世界观设定专家。
 请根据用户的要求，创造一个引人入胜的科幻世界观。
 注意要包含合理的科技设定、太空背景、外星文明等科幻元素。
 你的设定要有科学基础和想象力，能够支撑一个完整的科幻故事。"""
@@ -72,7 +76,9 @@ class NovelGeneratorService:
             (system_prompt, user_prompt_template)
         """
         if genre == NovelGenre.WUXIA:
-            system_prompt = """你是一位专业的武侠小说角色设定专家。
+            system_prompt = """【重要约束】请务必使用标准简体中文输出，严禁使用繁体字。所有文字内容（包括人名、地名、武功名称、对话等）都必须符合现代简体中文书写规范。
+
+你是一位专业的武侠小说角色设定专家。
 请根据用户要求和世界观背景，创造一个有血有肉的武侠主角。
 角色要有鲜明的性格特点、合理的背景故事和明确的动机目标。"""
 
@@ -91,7 +97,9 @@ class NovelGeneratorService:
 {additional_requirements}"""
 
         else:  # SCIFI
-            system_prompt = """你是一位专业的科幻小说角色设定专家。
+            system_prompt = """【重要约束】请务必使用标准简体中文输出，严禁使用繁体字。所有文字内容（包括人名、地名、科技名称、对话等）都必须符合现代简体中文书写规范。
+
+你是一位专业的科幻小说角色设定专家。
 请根据用户要求和世界观背景，创造一个适合科幻世界的主角。
 角色要有适应未来世界的特质、合理的科技背景和明确的使命感。"""
 
@@ -123,7 +131,9 @@ class NovelGeneratorService:
             (system_prompt, user_prompt_template)
         """
         if genre == NovelGenre.WUXIA:
-            system_prompt = """你是一位专业的武侠小说策划专家。
+            system_prompt = """【重要约束】请务必使用标准简体中文输出，严禁使用繁体字。所有文字内容（包括标题、简介、人名、地名、武功名称等）都必须符合现代简体中文书写规范。
+
+你是一位专业的武侠小说策划专家。
 请根据用户要求，创造一个完整的武侠小说初始设定，包括吸引人的标题、世界观、主角设定。
 要求设定有深度、逻辑性强，能够支撑一个精彩的武侠故事。"""
 
@@ -140,7 +150,9 @@ class NovelGeneratorService:
 {additional_requirements}"""
 
         else:  # SCIFI
-            system_prompt = """你是一位专业的科幻小说策划专家。
+            system_prompt = """【重要约束】请务必使用标准简体中文输出，严禁使用繁体字。所有文字内容（包括标题、简介、人名、地名、科技名称等）都必须符合现代简体中文书写规范。
+
+你是一位专业的科幻小说策划专家。
 请根据用户要求，创造一个完整的科幻小说初始设定，包括引人入胜的标题、世界观、主角设定。
 要求设定具有科学性、想象力，能够支撑一个精彩的科幻故事。"""
 
