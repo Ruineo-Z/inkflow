@@ -28,13 +28,9 @@ RUN npm install -g serve
 # 复制构建结果
 COPY --from=builder /app/dist /app
 
-# 复制启动脚本
-COPY env-replace.sh /app/env-replace.sh
-RUN chmod +x /app/env-replace.sh
-
 WORKDIR /app
 
 EXPOSE 3000
 
-# 使用启动脚本，支持运行时环境变量配置
-CMD ["/app/env-replace.sh"]
+# 使用serve提供静态文件，支持SPA路由
+CMD ["serve", "-s", ".", "-l", "tcp://0.0.0.0:3000"]
