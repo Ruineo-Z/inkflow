@@ -1,8 +1,6 @@
 // API 基础配置和通用方法
-// 运行时配置优先，构建时配置作为后备
-const API_BASE_URL = (typeof window !== 'undefined' && window.__APP_CONFIG__?.API_BASE_URL)
-  || import.meta.env.VITE_API_BASE_URL
-  || 'http://localhost:8000/api/v1';
+// 环境变量配置API地址，默认使用当前主机的8000端口
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api/v1`;
 
 class ApiService {
   static getAuthToken() {
