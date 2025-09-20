@@ -78,12 +78,28 @@ class ChapterService:
             # 例如：章节1001的第1个选项 = 10011
             option_id = self._calculate_option_id(chapter_id, i)
 
+            # 提取标签数据
+            tags = option_data.get("tags", {})
+            weight_factors = option_data.get("weight_factors", {})
+
+            # 构建权重因子JSON（如果AI没有生成，则基于标签计算默认值）
+            if not weight_factors:
+                weight_factors = self._calculate_default_weight_factors(tags)
+
             option = Option(
                 id=option_id,  # 手动指定ID
                 chapter_id=chapter_id,
                 option_order=i,
                 option_text=option_data["text"],
-                impact_description=option_data.get("impact_hint", "")
+                impact_description=option_data.get("impact_hint", ""),
+                # 添加标签字段
+                action_type=tags.get("action_type"),
+                narrative_impact=tags.get("narrative_impact"),
+                character_focus=tags.get("character_focus"),
+                pacing=tags.get("pacing"),  # 使用Schema处理后的字段名
+                emotional_tone=tags.get("emotional_tone"),
+                # 添加权重因子JSON
+                weight_factors=weight_factors
             )
             options.append(option)
             self.db.add(option)
@@ -235,8 +251,8 @@ class ChapterService:
 
         # 构建上下文完成日志
         context = ChapterContext(
-            world_setting=novel.world_setting or "",
-            protagonist_info=novel.protagonist_info or "",
+            world_setting=novel.background_setting or "",
+            protagonist_info=novel.character_setting or "",
             recent_chapters=recent_chapters_data,  # 现在是字典列表，不是Pydantic模型
             chapter_summaries=chapter_summaries,
             selected_option=selected_option_text
@@ -560,3 +576,48 @@ class ChapterService:
         - 章节1002的第1个选项：ID = 10021
         """
         return chapter_id * 10 + option_order
+
+    def _calculate_default_weight_factors(self, tags: dict) -> dict:
+        """
+        基于标签计算默认权重因子
+        当AI没有生成weight_factors时，使用此方法基于标签推导合理的权重值
+        """
+        # 默认权重值（中性）
+        weights = {
+            "risk_preference": 0.5,
+            "exploration_desire": 0.5,
+            "pacing_preference": 0.5,
+            "relationship_focus": 0.5,
+            "action_orientation": 0.5
+        }
+
+        # 基于action_type调整权重
+        action_type = tags.get("action_type", "")
+        if action_type == "risky":
+            weights["risk_preference"] = 0.8
+            weights["action_orientation"] = 0.7
+        elif action_type == "conservative":
+            weights["risk_preference"] = 0.2
+            weights["action_orientation"] = 0.3
+        elif action_type == "aggressive":
+            weights["action_orientation"] = 0.9
+            weights["risk_preference"] = 0.6
+        elif action_type == "diplomatic":
+            weights["relationship_focus"] = 0.8
+            weights["action_orientation"] = 0.4
+
+        # 基于narrative_impact调整权重
+        narrative_impact = tags.get("narrative_impact", "")
+        if narrative_impact == "exploration":
+            weights["exploration_desire"] = 0.8
+        elif narrative_impact == "relationship":
+            weights["relationship_focus"] = 0.8
+
+        # 基于pacing调整权重
+        pacing = tags.get("pacing", "")
+        if pacing == "fast":
+            weights["pacing_preference"] = 0.8
+        elif pacing == "slow":
+            weights["pacing_preference"] = 0.2
+
+        return weights

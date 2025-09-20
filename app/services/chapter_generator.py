@@ -55,12 +55,13 @@ class ChapterGeneratorService:
 
 要求：
 1. 创造一个吸引人的第一章标题
-2. 设计引人入胜的开篇情节
-3. 自然地展现世界观背景
-4. 介绍主角的出场和基本特征
-5. 设置推动剧情发展的初始冲突
-6. 列出3-5个关键事件
-7. 设计2-3个冲突点，为后续选择做铺垫"""
+2. 编写200-300字的详细摘要，概括本章剧情
+3. 设计引人入胜的开篇情节
+4. 自然地展现世界观背景
+5. 介绍主角的出场和基本特征
+6. 设置推动剧情发展的初始冲突
+7. 列出3-5个关键事件
+8. 设计2-3个冲突点，为后续选择做铺垫"""
 
         else:  # scifi
             system_prompt = """【重要约束】请务必使用标准简体中文输出，严禁使用繁体字。所有文字内容（包括标题、摘要、人名、地名、科技名称等）都必须符合现代简体中文书写规范。
@@ -79,12 +80,13 @@ class ChapterGeneratorService:
 
 要求：
 1. 创造一个有科幻感的第一章标题
-2. 设计体现未来科技的开篇情节
-3. 展现科幻世界观的独特元素
-4. 介绍主角在科幻背景下的设定
-5. 设置具有科幻特色的初始冲突
-6. 列出3-5个关键事件
-7. 设计2-3个冲突点，体现科幻主题"""
+2. 编写200-300字的详细摘要，概括本章剧情
+3. 设计体现未来科技的开篇情节
+4. 展现科幻世界观的独特元素
+5. 介绍主角在科幻背景下的设定
+6. 设置具有科幻特色的初始冲突
+7. 列出3-5个关键事件
+8. 设计2-3个冲突点，体现科幻主题"""
 
         return system_prompt, user_prompt
 
@@ -101,22 +103,28 @@ class ChapterGeneratorService:
 请根据前续章节内容和用户的选择，为下一章制定合理的剧情摘要。
 确保剧情逻辑连贯，选择的后果得到合理体现。"""
 
-        # 构建前续章节信息
+        # 构建前续章节信息 - 最近5章提供完整内容
         recent_chapters_text = ""
-        for chapter in context.recent_chapters[-3:]:  # 只用最近3章，避免prompt过长
+        recent_chapter_numbers = set()
+        for chapter in context.recent_chapters[-5:]:  # 最近5章完整内容
             # chapter 现在是字典格式，需要用字典的方式访问
+            recent_chapter_numbers.add(chapter['chapter_number'])
             recent_chapters_text += f"""
 第{chapter['chapter_number']}章：{chapter['title']}
 摘要：{chapter['summary']}
-正文节选：{chapter['content'][:500] if chapter['content'] else ''}...
+正文：{chapter['content'] if chapter['content'] else ''}
 """
 
-        # 构建历史摘要
+        # 构建历史摘要 - 排除最近5章，只要更早的章节摘要
         history_text = ""
         if context.chapter_summaries:
-            history_text = "更早章节摘要：\n"
-            for summary in context.chapter_summaries[-5:]:  # 最多5个历史摘要
-                history_text += f"第{summary['chapter_number']}章：{summary['title']} - {summary['summary']}\n"
+            # 过滤出不在最近5章中的历史章节
+            earlier_summaries = [s for s in context.chapter_summaries
+                               if s['chapter_number'] not in recent_chapter_numbers]
+            if earlier_summaries:
+                history_text = "更早章节摘要：\n"
+                for summary in earlier_summaries:
+                    history_text += f"第{summary['chapter_number']}章：{summary['title']} - {summary['summary']}\n"
 
         user_prompt = f"""请为下一章创建详细摘要。
 
@@ -128,19 +136,21 @@ class ChapterGeneratorService:
 
 {history_text}
 
-最近章节内容：
+最近章节完整内容：
 {recent_chapters_text}
 
 用户选择的选项：
 {context.selected_option}
 
 要求：
-1. 根据用户的选择，合理推进剧情发展
-2. 保持与前续章节的逻辑连贯性
-3. 创造符合选择后果的章节标题
-4. 设计这一章的主要情节走向
-5. 列出3-5个关键事件
-6. 设计2-3个新的冲突点，为下一章的选择做准备"""
+1. 仔细分析用户的选择，合理推进剧情发展
+2. 基于最近5章的完整内容，保持剧情逻辑连贯性
+3. 确保选择的后果在新章节中得到充分体现
+4. 创造符合选择后果的吸引人的章节标题
+5. 编写200-300字的详细摘要，概括本章剧情发展
+6. 设计这一章的主要情节走向和发展脉络
+7. 列出3-5个关键事件，体现剧情推进
+8. 设计2-3个新的冲突点，为下一章的选择做准备"""
 
         return system_prompt, user_prompt
 
@@ -182,8 +192,16 @@ class ChapterGeneratorService:
    - 选项2：谨慎保守的选择
    - 选项3：冒险或意外的选择
 6. 每个选项都要有简短的影响提示
+7. 为每个选项添加标签分析，包含以下五个维度：
+   - action_type: 行动倾向（active/conservative/risky/diplomatic/aggressive）
+   - narrative_impact: 叙事影响（exploration/development/resolution/relationship/worldbuilding）
+   - character_focus: 角色发展（self_growth/relationship/world_interaction/skill_development/moral_choice）
+   - pacing_type: 节奏控制（slow/medium/fast）
+   - emotional_tone: 情感色彩（positive/neutral/dark/humorous/mysterious）
 
-请用JSON格式返回，包含title、content、options字段。"""
+请用JSON格式返回，包含title、content、options字段。
+options数组中每个选项包含：text、impact_hint、tags字段。
+tags字段包含上述五个标签维度。"""
 
         return system_prompt, user_prompt
 

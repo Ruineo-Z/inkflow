@@ -1,6 +1,7 @@
 from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
+from app.schemas.option_tags import OptionTags, OptionWeightFactors, TaggedChapterOption
 
 
 # === 基础模型 ===
@@ -75,9 +76,13 @@ class ChapterSummary(BaseModel):
 
 
 class ChapterOption(BaseModel):
-    """章节选项模型"""
+    """章节选项模型（AI生成用）"""
     text: str = Field(description="选项文本")
     impact_hint: str = Field(description="选择影响提示")
+
+    # 新增：标签系统支持
+    tags: Optional[OptionTags] = Field(None, description="选项标签")
+    weight_factors: Optional[OptionWeightFactors] = Field(None, description="权重因子")
 
 
 class ChapterFullContent(BaseModel):

@@ -1,0 +1,10 @@
+# Claude Development Account
+# Email: claude.dev@example.com
+# Password: dev123456
+# User ID: 5
+
+ACCESS_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1IiwiZXhwIjoxNzU4MzcxNTAwfQ.fBvXa_X_7UuWIdBSDpHxEA9fh89wXurC5AnO9PtS5hQ"
+REFRESH_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1IiwiZXhwIjoxNzU4OTc0NTAwLCJ0eXBlIjoicmVmcmVzaCJ9.hpJBr04Oi4sH36HB9Cu0Ip3g918DRFVn-g1vvPfmXfc"
+
+# 使用示例：
+# curl -H "Authorization: Bearer $ACCESS_TOKEN" http://localhost:8000/api/v1/...

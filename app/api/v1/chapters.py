@@ -70,9 +70,9 @@ async def generate_chapter_stream(
                 chapter_id = None
                 try:
                     async for event_data in chapter_generator.generate_first_chapter_stream(
-                        world_setting=novel.world_setting or "",
-                        protagonist_info=novel.protagonist_info or "",
-                        genre="wuxia"  # 需要从novel获取实际的genre
+                        world_setting=novel.background_setting or "",
+                        protagonist_info=novel.character_setting or "",
+                        genre=novel.theme or "wuxia"  # 使用novel中的实际theme
                     ):
                         # 解析事件数据
                         if event_data.startswith("event: summary"):

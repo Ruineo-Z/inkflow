@@ -69,8 +69,12 @@ async def create_novel(
         # 3. 创建小说记录
         novel_create = NovelCreate(
             title=novel_data.get("title", "未命名小说"),
-            world_setting=world_setting_str,
-            protagonist_info=protagonist_str,
+            description=novel_data.get("summary", ""),
+            theme=request.genre.value,  # wuxia 或 scifi
+            status="draft",
+            background_setting=world_setting_str,
+            character_setting=protagonist_str,
+            outline="",  # 后续可以添加大纲生成
             user_id=current_user_id
         )
 

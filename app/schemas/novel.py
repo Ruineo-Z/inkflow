@@ -6,8 +6,12 @@ from pydantic import BaseModel, Field, Discriminator
 # 小说基础模式
 class NovelBase(BaseModel):
     title: str
-    world_setting: Optional[str] = None
-    protagonist_info: Optional[str] = None
+    description: Optional[str] = None
+    theme: str = "modern"
+    status: str = "draft"
+    background_setting: Optional[str] = None
+    character_setting: Optional[str] = None
+    outline: Optional[str] = None
 
 # 创建小说请求模式
 class NovelCreate(NovelBase):
@@ -16,14 +20,16 @@ class NovelCreate(NovelBase):
 # 更新小说请求模式
 class NovelUpdate(BaseModel):
     title: Optional[str] = None
-    world_setting: Optional[str] = None
-    protagonist_info: Optional[str] = None
-    total_chapters: Optional[int] = None
+    description: Optional[str] = None
+    theme: Optional[str] = None
+    status: Optional[str] = None
+    background_setting: Optional[str] = None
+    character_setting: Optional[str] = None
+    outline: Optional[str] = None
 
 # 小说响应模式
 class NovelResponse(NovelBase):
     id: int
-    total_chapters: int
     user_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None

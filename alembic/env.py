@@ -28,6 +28,7 @@ if config.config_file_name is not None:
 
 # 导入所有模型以确保它们被注册到 Base.metadata
 from app.models import User, Novel, Chapter, Option
+from app.models.user_preference import UserPreference, UserChoiceAnalytics
 
 # add your model's MetaData object here
 # for 'autogenerate' support

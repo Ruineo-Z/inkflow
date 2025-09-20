@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -14,6 +14,16 @@ class Option(Base):
     option_text = Column(Text, nullable=False)  # 选项文本内容
     impact_description = Column(Text)  # 对后续剧情的影响描述
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # 新增：标签系统字段
+    action_type = Column(String(20), nullable=True)  # 行动倾向类型
+    narrative_impact = Column(String(20), nullable=True)  # 叙事影响类型
+    character_focus = Column(String(20), nullable=True)  # 角色发展焦点
+    pacing = Column(String(10), nullable=True)  # 节奏控制类型
+    emotional_tone = Column(String(20), nullable=True)  # 情感色彩
+
+    # 权重因子（JSON格式存储）
+    weight_factors = Column(JSON, nullable=True)  # 存储权重因子字典
 
     # 关系
     chapter = relationship("Chapter", back_populates="options")
