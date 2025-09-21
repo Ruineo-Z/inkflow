@@ -14,6 +14,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // 检查认证状态
   useEffect(() => {
@@ -85,6 +86,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // 刷新Token
+  const refreshToken = async () => {
+    if (isRefreshing) {
+      return; // 防止重复刷新
+    }
+
+    try {
+      setIsRefreshing(true);
+      const newToken = await ApiService.refreshToken();
+      console.log('Token刷新成功');
+      return newToken;
+    } catch (error) {
+      console.error('Token刷新失败:', error);
+      // 刷新失败，自动登出
+      await logout();
+      throw error;
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   // 登出
   const logout = async () => {
     try {
@@ -101,9 +123,11 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     isLoading,
+    isRefreshing,
     login,
     register,
     logout,
+    refreshToken,
   };
 
   return (

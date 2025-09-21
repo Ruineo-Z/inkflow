@@ -10,7 +10,18 @@ engine = create_async_engine(
     pool_size=20,
     max_overflow=30,
     pool_pre_ping=True,
-    pool_recycle=3600
+    pool_recycle=3600,
+    # 增加连接超时时间，防止流式响应中连接被取消
+    connect_args={
+        "command_timeout": 60,  # 命令超时60秒
+        "server_settings": {
+            "application_name": "inkflow_app",
+        }
+    },
+    # 增加连接池超时时间
+    pool_timeout=30,
+    # 设置连接重试参数
+    pool_reset_on_return="commit"
 )
 
 async_session_maker = sessionmaker(

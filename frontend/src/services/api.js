@@ -5,8 +5,63 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/api/v1`;
 
 class ApiService {
+  static isRefreshing = false;
+  static failedQueue = [];
+
   static getAuthToken() {
     return localStorage.getItem('access_token');
+  }
+
+  static getRefreshToken() {
+    return localStorage.getItem('refresh_token');
+  }
+
+  static async refreshToken() {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${refreshToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Refresh failed`);
+      }
+
+      const data = await response.json();
+      
+      // 更新存储的tokens
+      localStorage.setItem('access_token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+
+      return data.access_token;
+    } catch (error) {
+      // 刷新失败，清除所有tokens
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      throw error;
+    }
+  }
+
+  static async processQueue(error, token = null) {
+    this.failedQueue.forEach(({ resolve, reject }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(token);
+      }
+    });
+    
+    this.failedQueue = [];
   }
 
   static async request(endpoint, options = {}) {
@@ -24,6 +79,39 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
+
+      // 处理401错误 - token过期
+      if (response.status === 401 && token && !options._retry) {
+        if (this.isRefreshing) {
+          // 如果正在刷新，将请求加入队列
+          return new Promise((resolve, reject) => {
+            this.failedQueue.push({ resolve, reject });
+          }).then(() => {
+            // 重试原始请求
+            return this.request(endpoint, { ...options, _retry: true });
+          });
+        }
+
+        this.isRefreshing = true;
+
+        try {
+          const newToken = await this.refreshToken();
+          this.isRefreshing = false;
+          this.processQueue(null, newToken);
+          
+          // 重试原始请求
+          return this.request(endpoint, { ...options, _retry: true });
+        } catch (refreshError) {
+          this.isRefreshing = false;
+          this.processQueue(refreshError, null);
+          
+          // 刷新失败，跳转到登录页
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          throw refreshError;
+        }
+      }
 
       if (!response.ok) {
         const errorData = await response.text();

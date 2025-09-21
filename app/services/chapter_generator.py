@@ -326,15 +326,39 @@ tags字段包含上述五个标签维度。"""
 
             logger.info(f"🔧 构建摘要提示词完成, 系统提示词长度: {len(system_prompt)}, 用户提示词长度: {len(user_prompt)}")
 
-            summary_result = await kimi_service.generate_structured_output(
-                model_class=ChapterSummary,
-                user_prompt=user_prompt,
-                system_prompt=system_prompt
-            )
+            # 添加API调用前的详细日志
+            logger.info("🚀 准备调用Kimi API生成章节摘要")
+            logger.info(f"📊 API参数: model=ChapterSummary, timeout={kimi_service.timeout}s")
+            
+            try:
+                # 添加超时处理的API调用
+                import asyncio
+                summary_result = await asyncio.wait_for(
+                    kimi_service.generate_structured_output(
+                        model_class=ChapterSummary,
+                        user_prompt=user_prompt,
+                        system_prompt=system_prompt
+                    ),
+                    timeout=180  # 3分钟超时
+                )
+                logger.info("✅ Kimi API调用完成，开始处理结果")
+                
+            except asyncio.TimeoutError:
+                error_msg = "Kimi API调用超时（3分钟）"
+                logger.error(f"⏰ {error_msg}")
+                yield f"event: error\ndata: {json_dumps_chinese({'error': error_msg})}\n\n"
+                return
+            except Exception as api_error:
+                error_msg = f"Kimi API调用异常: {str(api_error)}"
+                logger.error(f"💥 {error_msg}", exc_info=True)
+                yield f"event: error\ndata: {json_dumps_chinese({'error': error_msg})}\n\n"
+                return
 
+            # 检查API调用结果
             if not summary_result["success"]:
                 error_msg = f"摘要生成失败: {summary_result.get('error', '未知错误')}"
                 logger.error(f"❌ 后续章节摘要生成失败: {error_msg}")
+                logger.error(f"📋 完整错误信息: {summary_result}")
                 yield f"event: error\ndata: {json_dumps_chinese({'error': error_msg})}\n\n"
                 return
 

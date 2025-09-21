@@ -151,10 +151,7 @@ const NovelListPage = () => {
     }
   };
 
-  const getProgressPercentage = (novel) => {
-    if (novel.chaptersCount === 0) return 0;
-    return Math.round((novel.lastReadChapter / novel.chaptersCount) * 100);
-  };
+
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -221,7 +218,6 @@ const NovelListPage = () => {
                     <div className="novel-cover">{novel.coverImage}</div>
                     <div className="novel-info">
                       <h3 className="novel-title">{novel.title}</h3>
-                      <p className="novel-description">{novel.description}</p>
                       <div className="novel-stats">
                         <span
                           className="novel-status"
@@ -233,6 +229,9 @@ const NovelListPage = () => {
                           {novel.chaptersCount} 章节
                         </span>
                       </div>
+                      <div className="last-read">
+                        <span>最后阅读：{novel.lastReadTime}</span>
+                      </div>
                     </div>
                     <div
                       className="novel-actions"
@@ -242,22 +241,6 @@ const NovelListPage = () => {
                       }}
                     >
                       ⋮
-                    </div>
-                  </div>
-
-                  <div className="novel-progress">
-                    <div className="progress-info">
-                      <span>阅读进度</span>
-                      <span>{getProgressPercentage(novel)}%</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div
-                        className="progress-fill"
-                        style={{ width: `${getProgressPercentage(novel)}%` }}
-                      ></div>
-                    </div>
-                    <div className="last-read">
-                      <span>最后阅读：{novel.lastReadTime}</span>
                     </div>
                   </div>
                 </div>

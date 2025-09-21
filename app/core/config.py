@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080"
 
     # 数据库配置
-    DATABASE_URL: str = "postgresql+asyncpg://inkflow:inkflow123@localhost:5432/inkflow"
+    DATABASE_URL: str = "postgresql+asyncpg://admin:inkflow123@localhost:5432/inkflow"
     DATABASE_ECHO: bool = False
 
     # JWT配置

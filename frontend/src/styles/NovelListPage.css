@@ -247,6 +247,9 @@
 .novel-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .novel-title {
@@ -255,11 +258,7 @@
   color: #333;
   margin: 0 0 0.5rem 0;
   line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
 }
 
 .novel-description {
@@ -278,6 +277,7 @@
   display: flex;
   gap: 1rem;
   font-size: 0.8rem;
+  margin: 0;
 }
 
 .novel-status {
@@ -304,40 +304,11 @@
   color: #333;
 }
 
-/* 进度条区域 */
-.novel-progress {
-  padding: 0 1rem 1rem;
-  border-top: 1px solid #f5f5f5;
-  margin-top: 0.5rem;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-  font-size: 0.85rem;
-  color: #666;
-}
-
-.progress-bar {
-  height: 4px;
-  background: #f0f0f0;
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #1890ff, #40a9ff);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
+/* 最后阅读时间 - 现在在header中 */
 .last-read {
   font-size: 0.8rem;
   color: #999;
+  margin-top: 0.5rem;
 }
 
 /* 浮动创建按钮 */
@@ -396,6 +367,7 @@
 
   .novel-title {
     font-size: 1.2rem;
+    white-space: nowrap;
   }
 
   .novel-description {
@@ -439,6 +411,7 @@
 
   .novel-title {
     font-size: 1.3rem;
+    white-space: nowrap;
   }
 
   .novel-description {
@@ -449,9 +422,7 @@
     padding: 0 1.5rem 1.5rem;
   }
 
-  .progress-info {
-    font-size: 0.9rem;
-  }
+
 
   .create-novel-fab {
     bottom: 2rem !important;
@@ -498,6 +469,7 @@
 
   .novel-title {
     font-size: 1rem;
+    white-space: nowrap;
   }
 
   .novel-description {
