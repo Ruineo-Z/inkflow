@@ -21,6 +21,7 @@ class Chapter(Base):
     novel = relationship("Novel", back_populates="chapters")
     options = relationship("Option", back_populates="chapter", cascade="all, delete-orphan")
     user_choices = relationship("UserChoice", back_populates="chapter", cascade="all, delete-orphan")
+    generation_task = relationship("GenerationTask", back_populates="chapter", uselist=False)
 
     def __repr__(self):
         return f"<Chapter(id={self.id}, novel_id={self.novel_id}, chapter_number={self.chapter_number}, title='{self.title}')>"

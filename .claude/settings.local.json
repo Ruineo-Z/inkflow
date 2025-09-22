@@ -56,7 +56,10 @@
       "Bash(DATABASE_URL=\"postgresql://admin:admin123@localhost:5432/inkflow\" uv run alembic current)",
       "Bash(DATABASE_URL:*)",
       "Bash(uv add:*)",
-      "Bash(DATABASE_URL=\"postgresql+asyncpg://admin:admin123@localhost:5432/inkflow\" uv run alembic current)"
+      "Bash(DATABASE_URL=\"postgresql+asyncpg://admin:admin123@localhost:5432/inkflow\" uv run alembic current)",
+      "Bash(DATABASE_URL=\"postgresql+asyncpg://admin:admin123@localhost:5432/inkflow\" uv run alembic revision --autogenerate -m \"添加任务管理系统 - task_id机制支持\")",
+      "Bash(DATABASE_URL=\"postgresql+asyncpg://admin:admin123@localhost:5432/inkflow\" uv run alembic upgrade head)",
+      "Bash(xargs kill:*)"
     ],
     "deny": [],
     "ask": []

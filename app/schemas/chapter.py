@@ -26,6 +26,30 @@ class GenerateChapterRequest(BaseModel):
     pass
 
 
+class GenerateChapterResponse(BaseModel):
+    """启动章节生成任务的响应"""
+    task_id: str = Field(description="任务ID，用于查询生成进度")
+    status: str = Field(description="任务状态")
+    message: str = Field(description="提示信息")
+
+
+class ChapterGenerationProgress(BaseModel):
+    """章节生成进度响应"""
+    task_id: str = Field(description="任务ID")
+    status: str = Field(description="任务状态：pending, running, completed, failed")
+    progress_percentage: int = Field(description="进度百分比 0-100")
+    current_step: Optional[str] = Field(None, description="当前步骤描述")
+
+    # 生成结果（仅在completed状态时返回）
+    chapter_data: Optional[dict] = Field(None, description="生成的章节数据")
+    error_message: Optional[str] = Field(None, description="错误信息")
+
+    # 时间信息
+    created_at: datetime = Field(description="任务创建时间")
+    started_at: Optional[datetime] = Field(None, description="任务开始时间")
+    completed_at: Optional[datetime] = Field(None, description="任务完成时间")
+
+
 class SaveUserChoiceRequest(BaseModel):
     option_id: int = Field(description="用户选择的选项ID")
 

@@ -2,7 +2,8 @@ from app.models.user import User
 from app.models.novel import Novel
 from app.models.chapter import Chapter
 from app.models.option import Option, UserChoice
+from app.models.task import GenerationTask, TaskStatus, TaskType
 # 暂时注释掉用户偏好模型，避免循环导入
 # from app.models.user_preference import UserPreference, UserChoiceAnalytics
 
-__all__ = ["User", "Novel", "Chapter", "Option", "UserChoice"]
+__all__ = ["User", "Novel", "Chapter", "Option", "UserChoice", "GenerationTask", "TaskStatus", "TaskType"]

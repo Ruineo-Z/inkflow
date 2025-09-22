@@ -17,3 +17,4 @@ class User(Base):
     # 关系
     novels = relationship("Novel", back_populates="user", cascade="all, delete-orphan")
     choices = relationship("UserChoice", back_populates="user", cascade="all, delete-orphan")
+    generation_tasks = relationship("GenerationTask", back_populates="user", cascade="all, delete-orphan")
