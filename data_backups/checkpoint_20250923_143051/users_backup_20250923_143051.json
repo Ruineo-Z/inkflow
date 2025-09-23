@@ -1,0 +1,46 @@
+{
+  "table_name": "users",
+  "backup_time": "20250923_143051",
+  "schema": [
+    {
+      "column_name": "id",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "name",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "email",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "password",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    }
+  ],
+  "data": [
+    {
+      "id": 1,
+      "name": "admin",
+      "email": "admin@admin.com",
+      "password": "$2b$12$9LrayNohAjKmH06SkiRf1OX3eTkoZyfEupGBtBh4Pd.Haej8wt2Li",
+      "created_at": "2025-09-23T03:59:10.028266+00:00",
+      "updated_at": null
+    }
+  ]
+}

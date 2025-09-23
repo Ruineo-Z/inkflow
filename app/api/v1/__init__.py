@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from . import auth, health, novels, themes, chapters, admin
+from . import auth, health, novels, themes, chapters, admin, tasks
 
 api_router = APIRouter()
 
@@ -9,4 +9,5 @@ api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(novels.router, prefix="/novels", tags=["novels"])
 api_router.include_router(themes.router, prefix="/themes", tags=["themes"])
 api_router.include_router(chapters.router, prefix="", tags=["chapters"])
+api_router.include_router(tasks.router, prefix="", tags=["tasks"])
 # api_router.include_router(admin.router, prefix="/admin", tags=["admin"])

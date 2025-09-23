@@ -1,0 +1,13 @@
+{
+  "checkpoint_time": "20250923_143051",
+  "database_url": "postgresql+asyncpg://admin:admin123@localhost:5432/inkflow",
+  "backup_files": {
+    "users": "data_backups\\checkpoint_20250923_143051\\users_backup_20250923_143051.json",
+    "novels": "data_backups\\checkpoint_20250923_143051\\novels_backup_20250923_143051.json",
+    "chapters": "data_backups\\checkpoint_20250923_143051\\chapters_backup_20250923_143051.json",
+    "user_choices": "data_backups\\checkpoint_20250923_143051\\user_choices_backup_20250923_143051.json",
+    "generation_tasks": "data_backups\\checkpoint_20250923_143051\\generation_tasks_backup_20250923_143051.json"
+  },
+  "data_integrity": true,
+  "migration_notes": "迁移前自动检查点 - 保护老用户数据"
+}

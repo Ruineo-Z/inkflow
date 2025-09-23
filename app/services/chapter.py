@@ -65,6 +65,49 @@ class ChapterService:
 
         return chapter
 
+    async def create_chapter_with_options(
+        self,
+        novel_id: int,
+        title: str,
+        summary: str,
+        content: str,
+        options_data: List[Dict[str, Any]]
+    ) -> Chapter:
+        """创建章节并保存完整内容和选项"""
+
+        # 获取下一个章节号
+        result = await self.db.execute(
+            select(func.coalesce(func.max(Chapter.chapter_number), 0) + 1)
+            .where(Chapter.novel_id == novel_id)
+        )
+        chapter_number = result.scalar()
+
+        # 计算章节ID
+        chapter_id = await self._calculate_chapter_id(novel_id, chapter_number)
+
+        # 创建章节
+        chapter = Chapter(
+            id=chapter_id,
+            novel_id=novel_id,
+            chapter_number=chapter_number,
+            title=title,
+            summary=summary,
+            content=content
+        )
+
+        self.db.add(chapter)
+        await self.db.commit()
+        await self.db.refresh(chapter)
+
+        # 创建选项
+        if options_data:
+            await self.create_chapter_options(chapter.id, options_data)
+
+        # 更新小说的总章节数
+        await self._update_novel_total_chapters(novel_id)
+
+        return chapter
+
     async def create_chapter_options(
         self,
         chapter_id: int,

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     API_PREFIX: str = "/api/v1"
 
     # CORS配置
-    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:8080"
+    ALLOWED_ORIGINS: str = "*"
 
     # 数据库配置
     DATABASE_URL: str = "postgresql+asyncpg://admin:inkflow123@localhost:5432/inkflow"

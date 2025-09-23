@@ -119,6 +119,22 @@ class DatabaseMigrationManager:
 
 
 async def run_auto_migration(engine: AsyncEngine) -> bool:
-    """运行自动迁移的便捷函数"""
+    """运行自动迁移的便捷函数 - 包含数据安全保护"""
     migration_manager = DatabaseMigrationManager(engine)
+
+    # 检查是否需要迁移
+    if await migration_manager.needs_migration():
+        logger.info("🛡️  检测到需要迁移，启动数据安全保护机制...")
+
+        try:
+            # 创建迁移前备份
+            from scripts.data_migration_safety import create_pre_migration_backup
+            backup_path = await create_pre_migration_backup()
+            logger.info(f"✅ 老用户数据已安全备份到: {backup_path}")
+
+        except Exception as e:
+            logger.error(f"⚠️  数据备份失败: {e}")
+            logger.error("继续执行迁移，但建议手动备份数据")
+
+    # 执行迁移
     return await migration_manager.auto_migrate()

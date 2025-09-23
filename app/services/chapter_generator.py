@@ -5,7 +5,7 @@
 import json
 import logging
 
-from typing import AsyncGenerator, Dict, Any
+from typing import AsyncGenerator, Dict, Any, Optional
 
 from fastapi import HTTPException
 
@@ -209,7 +209,9 @@ tags字段包含上述五个标签维度。"""
         self,
         world_setting: str,
         protagonist_info: str,
-        genre: str = "wuxia"
+        genre: str = "wuxia",
+        task_id: Optional[str] = None,
+        task_queue = None
     ) -> AsyncGenerator[str, None]:
         """生成第一章的流式内容"""
         try:
@@ -278,6 +280,14 @@ tags字段包含上述五个标签维度。"""
                 if stream_chunk.chunk_type == "content":
                     chunk_text = stream_chunk.data['chunk']
                     content_char_count += len(chunk_text)
+
+                    # 如果提供了task_id和task_queue，将内容存储到Redis
+                    if task_id and task_queue:
+                        await task_queue.update_task_progress(
+                            task_id=task_id,
+                            content_chunk=chunk_text
+                        )
+
                     yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
                 elif stream_chunk.chunk_type == "complete":
                     logger.info(f"✅ Step 2 完成: 章节正文和选项生成成功")
@@ -303,7 +313,9 @@ tags字段包含上述五个标签维度。"""
         self,
         novel_id: int,
         selected_option_id: int,
-        context: ChapterContext
+        context: ChapterContext,
+        task_id: Optional[str] = None,
+        task_queue = None
     ) -> AsyncGenerator[str, None]:
         """生成后续章节的流式内容"""
         try:
@@ -390,6 +402,14 @@ tags字段包含上述五个标签维度。"""
                 # 将StreamChunk转换为SSE格式
                 if stream_chunk.chunk_type == "content":
                     chunk_text = stream_chunk.data['chunk']
+
+                    # 如果提供了task_id和task_queue，将内容存储到Redis
+                    if task_id and task_queue:
+                        await task_queue.update_task_progress(
+                            task_id=task_id,
+                            content_chunk=chunk_text
+                        )
+
                     yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
                 elif stream_chunk.chunk_type == "complete":
                     logger.info(f"✅ Step 2 完成: 后续章节正文和选项生成成功")

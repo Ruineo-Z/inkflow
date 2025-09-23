@@ -63,7 +63,16 @@
       "mcp__promptx__toolx",
       "Bash(uv --version)",
       "Bash(npm install)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(netstat:*)",
+      "Bash(redis-cli:*)",
+      "Bash(DATABASE_URL=\"postgresql+asyncpg://admin:admin123@localhost:5432/inkflow\" uv run python scripts/data_migration_safety.py)",
+      "Bash(http_proxy=\"\" https_proxy=\"\" curl -v http://localhost:8000/)",
+      "Bash(pkill:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 import json
 import logging
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +18,7 @@ from app.schemas.chapter import (
     UserChoiceResponse
 )
 from app.services.task import TaskService
-from app.models.task import TaskType
+from app.models.task import TaskType as ModelTaskType
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ async def create_chapter_generation_task(
         latest_chapter_number = await chapter_service.get_latest_chapter_number(novel_id)
 
         # 确定任务类型
-        task_type = TaskType.FIRST_CHAPTER_GENERATION if latest_chapter_number == 0 else TaskType.CHAPTER_GENERATION
+        task_type = ModelTaskType.FIRST_CHAPTER_GENERATION if latest_chapter_number == 0 else ModelTaskType.CHAPTER_GENERATION
 
         # 创建任务（生成时再从数据库获取详细信息）
         response = await task_service.start_generation_task(
@@ -75,7 +75,7 @@ async def create_chapter_generation_task(
 
         return GenerateChapterResponse(
             task_id=response.task_id,
-            status=response.status.value,
+            status=response.status,
             message=response.message
         )
 
@@ -87,6 +87,73 @@ async def create_chapter_generation_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"创建任务失败: {str(e)}"
         )
+
+
+@router.get("/novels/{novel_id}/chapters/generate/{task_id}/stream", summary="流式获取章节生成内容")
+async def stream_chapter_generation(
+    novel_id: int,
+    task_id: str,
+    from_position: int = Query(0, ge=0, description="起始位置，支持断点续看"),
+    current_user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    流式获取章节生成内容，支持打字机效果
+
+    - 实时返回生成进度和内容片段
+    - 支持Server-Sent Events (SSE)格式
+    """
+    async def generate_stream():
+        try:
+            task_service = TaskService(db)
+            last_content_length = 0
+
+            while True:
+                # 查询任务进度
+                progress = await task_service.get_task_progress(task_id, current_user_id)
+
+                if not progress:
+                    yield f"event: error\ndata: {json.dumps({'error': '任务不存在或无权访问'})}\n\n"
+                    break
+
+                # 验证任务是否属于指定小说
+                if progress.result_data and "novel_id" in progress.result_data:
+                    if progress.result_data["novel_id"] != novel_id:
+                        yield f"event: error\ndata: {json.dumps({'error': '任务不属于此小说'})}\n\n"
+                        break
+
+                # 发送进度更新
+                yield f"event: progress\ndata: {json.dumps({'progress': progress.progress_percentage, 'step': progress.current_step})}\n\n"
+
+                # 获取流式内容片段（新增）
+                from app.services.redis_queue import get_task_queue
+                task_queue = get_task_queue()
+                content_chunks = await task_queue.get_task_content_stream(task_id)
+
+                # 发送新的内容片段
+                if len(content_chunks) > last_content_length:
+                    new_chunks = content_chunks[last_content_length:]
+                    for chunk in new_chunks:
+                        yield f"event: content\ndata: {json.dumps({'text': chunk})}\n\n"
+                    last_content_length = len(content_chunks)
+
+                # 如果任务完成，发送完整结果
+                if progress.status == "COMPLETED":
+                    yield f"event: complete\ndata: {json.dumps(progress.result_data)}\n\n"
+                    break
+                elif progress.status == "FAILED":
+                    yield f"event: error\ndata: {json.dumps({'error': progress.error_message})}\n\n"
+                    break
+
+                # 等待一段时间再查询
+                import asyncio
+                await asyncio.sleep(0.5)
+
+        except Exception as e:
+            logger.error(f"❌ 流式获取章节生成内容失败: {str(e)}")
+            yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+
+    return StreamingResponse(generate_stream(), media_type="text/plain")
 
 
 @router.get("/novels/{novel_id}/chapters/generate/{task_id}", response_model=ChapterGenerationProgress, summary="查询章节生成进度")
@@ -125,7 +192,7 @@ async def get_chapter_generation_progress(
         # 转换为章节生成进度响应格式
         return ChapterGenerationProgress(
             task_id=progress.task_id,
-            status=progress.status.value,
+            status=progress.status,
             progress_percentage=progress.progress_percentage,
             current_step=progress.current_step,
             chapter_data=progress.result_data,

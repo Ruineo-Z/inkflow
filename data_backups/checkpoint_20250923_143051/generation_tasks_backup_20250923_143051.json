@@ -1,0 +1,208 @@
+{
+  "table_name": "generation_tasks",
+  "backup_time": "20250923_143051",
+  "schema": [
+    {
+      "column_name": "id",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "task_id",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "novel_id",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "task_type",
+      "data_type": "USER-DEFINED",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "status",
+      "data_type": "USER-DEFINED",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "input_data",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "result_data",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "error_message",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "chapter_id",
+      "data_type": "integer",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "completed_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES"
+    }
+  ],
+  "data": [
+    {
+      "id": 1,
+      "task_id": "495cf1d3-3176-4ad0-a05b-047d2a6b39e8",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "PENDING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T04:52:00.002745",
+      "completed_at": null
+    },
+    {
+      "id": 2,
+      "task_id": "d824a5bb-ef9d-4cae-99ae-f06fe3be93ca",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "PENDING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T04:54:49.411044",
+      "completed_at": null
+    },
+    {
+      "id": 3,
+      "task_id": "52582a34-612c-47b0-8186-203f4150377a",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "PENDING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T04:57:55.879248",
+      "completed_at": null
+    },
+    {
+      "id": 4,
+      "task_id": "ec95fd1d-a49d-4b25-9c72-a883cc643d33",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "PENDING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T05:00:04.045279",
+      "completed_at": null
+    },
+    {
+      "id": 5,
+      "task_id": "f0329e9b-c578-4c48-a5c7-ebb2559bdf98",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "PENDING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T05:01:12.980008",
+      "completed_at": null
+    },
+    {
+      "id": 6,
+      "task_id": "f8c40e1f-5fde-4d54-9b5c-7b478c4c5fc4",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "PENDING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T05:15:16.978709",
+      "completed_at": null
+    },
+    {
+      "id": 7,
+      "task_id": "fe5c859d-88a4-4e87-bff4-1cea05c10bf0",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "PENDING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T05:18:55.240442",
+      "completed_at": null
+    },
+    {
+      "id": 8,
+      "task_id": "7d00b4e6-b2a2-4f81-b452-b8fafb11bab6",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "RUNNING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T05:20:08.044559",
+      "completed_at": null
+    },
+    {
+      "id": 9,
+      "task_id": "64d20522-95b5-473b-b4ba-2ed2c22201d7",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "RUNNING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T05:27:05.521601",
+      "completed_at": null
+    },
+    {
+      "id": 10,
+      "task_id": "5d80d9ee-12ea-42a5-8b9f-626c7a1d160f",
+      "user_id": 1,
+      "novel_id": 1,
+      "task_type": "FIRST_CHAPTER_GENERATION",
+      "status": "RUNNING",
+      "input_data": null,
+      "result_data": null,
+      "error_message": null,
+      "chapter_id": null,
+      "created_at": "2025-09-23T05:38:03.370194",
+      "completed_at": null
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试流式接口</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #output { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: auto; }
+        .content { color: blue; }
+        .progress { color: green; }
+        .error { color: red; }
+        .complete { color: purple; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>InkFlow 流式接口测试</h1>
+    <button onclick="startTest()">开始生成章节</button>
+    <button onclick="clearOutput()">清空输出</button>
+    <div id="output"></div>
+
+    <script>
+        let eventSource = null;
+
+        function addMessage(message, className = '') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            if (className) {
+                div.className = className;
+            }
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearOutput() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        async function startTest() {
+            try {
+                // 首先登录获取token
+                addMessage('正在登录...');
+                const loginResponse = await fetch('http://localhost:8000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'test123'
+                    })
+                });
+
+                if (!loginResponse.ok) {
+                    addMessage('登录失败，状态码: ' + loginResponse.status, 'error');
+                    return;
+                }
+
+                const loginData = await loginResponse.json();
+                const token = loginData.access_token;
+                addMessage('登录成功！');
+
+                // 创建章节生成任务
+                addMessage('正在创建章节生成任务...');
+                const taskResponse = await fetch('http://localhost:8000/api/v1/novels/1/chapters/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({})
+                });
+
+                if (!taskResponse.ok) {
+                    addMessage('创建任务失败，状态码: ' + taskResponse.status, 'error');
+                    return;
+                }
+
+                const taskData = await taskResponse.json();
+                const taskId = taskData.task_id;
+                addMessage('任务创建成功，任务ID: ' + taskId);
+
+                // 连接流式接口
+                addMessage('正在连接流式接口...');
+                const streamUrl = `http://localhost:8000/api/v1/novels/1/chapters/generate/${taskId}/stream`;
+                eventSource = new EventSource(streamUrl + `?token=${token}`);
+
+                eventSource.onopen = function() {
+                    addMessage('流式连接已建立！', 'progress');
+                };
+
+                eventSource.addEventListener('progress', function(e) {
+                    const data = JSON.parse(e.data);
+                    addMessage(`进度更新: ${data.progress}% - ${data.step}`, 'progress');
+                });
+
+                eventSource.addEventListener('content', function(e) {
+                    const data = JSON.parse(e.data);
+                    addMessage(`内容片段: ${data.text}`, 'content');
+                });
+
+                eventSource.addEventListener('complete', function(e) {
+                    const data = JSON.parse(e.data);
+                    addMessage('生成完成！', 'complete');
+                    addMessage(JSON.stringify(data, null, 2), 'complete');
+                    eventSource.close();
+                });
+
+                eventSource.addEventListener('error', function(e) {
+                    const data = JSON.parse(e.data);
+                    addMessage('错误: ' + data.error, 'error');
+                    eventSource.close();
+                });
+
+                eventSource.onerror = function(e) {
+                    addMessage('连接错误', 'error');
+                    eventSource.close();
+                };
+
+            } catch (error) {
+                addMessage('测试异常: ' + error.message, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

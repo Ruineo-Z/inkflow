@@ -1,0 +1,76 @@
+{
+  "table_name": "novels",
+  "backup_time": "20250923_143051",
+  "schema": [
+    {
+      "column_name": "id",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "title",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "integer",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "description",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "theme",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "status",
+      "data_type": "character varying",
+      "is_nullable": "NO"
+    },
+    {
+      "column_name": "background_setting",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "character_setting",
+      "data_type": "text",
+      "is_nullable": "YES"
+    },
+    {
+      "column_name": "outline",
+      "data_type": "text",
+      "is_nullable": "YES"
+    }
+  ],
+  "data": [
+    {
+      "id": 1,
+      "title": "剑破九重天",
+      "user_id": 1,
+      "created_at": "2025-09-23T03:59:59.846950+00:00",
+      "updated_at": null,
+      "description": "江湖传言，得九重剑谱者可号令天下。一个背负血仇的少年，在乱世中踏上寻剑之路，却意外揭开朝廷与武林的惊天阴谋。",
+      "theme": "wuxia",
+      "status": "draft",
+      "background_setting": "背景：大明嘉靖年间，倭寇侵扰东南，朝廷腐败无能，江湖势力割据一方。武林中流传着一个古老的传说：九重天剑谱藏有绝世剑法，得之可破千军万马。各大门派为争夺剑谱明争暗斗，朝廷锦衣卫也暗中插手，江湖陷入前所未有的动荡。\n朝代：明朝嘉靖年间（1522-1566年）\n武功体系：内功修炼分为九重境界，外功招式讲究形意合一。剑法以快、准、狠著称，顶级剑客可剑气伤人于百步之外。轻功水上漂、隔空点穴等绝技真实存在，但需数十年苦修方能大成。\n主要门派：武当派, 少林派, 峨眉派, 昆仑派, 青城派, 华山派, 丐帮, 魔教",
+      "character_setting": "姓名：林云\n性格：外表冷漠孤傲，内心炽热重情，机智果断，有仇必报，对弱者充满同情。\n背景：本是江南名门林家庄少主，十五年前家族因拒绝交出祖传剑谱被神秘势力灭门。当时年仅七岁的他藏在井中逃过一劫，后被隐居老剑客收养，传授剑法。\n动机：为查明灭门真相，寻找传说中的九重剑谱，手刃仇人，重建林家庄，并阻止江湖因剑谱引发的血雨腥风。",
+      "outline": ""
+    }
+  ]
+}
