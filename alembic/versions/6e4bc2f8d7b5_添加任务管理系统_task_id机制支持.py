@@ -49,15 +49,55 @@ def upgrade() -> None:
     op.alter_column('chapters', 'content',
                existing_type=sa.TEXT(),
                nullable=True)
-    op.drop_constraint(op.f('chapters_novel_id_chapter_number_key'), 'chapters', type_='unique')
-    op.drop_index(op.f('ix_chapters_novel_id'), table_name='chapters')
-    op.drop_column('chapters', 'word_count')
-    op.drop_index(op.f('ix_novels_user_id'), table_name='novels')
-    op.create_index(op.f('ix_novels_title'), 'novels', ['title'], unique=False)
-    op.create_index(op.f('ix_options_id'), 'options', ['id'], unique=False)
-    op.drop_constraint(op.f('users_email_key'), 'users', type_='unique')
-    op.drop_index(op.f('ix_users_email'), table_name='users')
-    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
+    # 检查约束是否存在后再删除
+    connection = op.get_bind()
+    inspector = sa.inspect(connection)
+    constraints = inspector.get_unique_constraints('chapters')
+    constraint_names = [c['name'] for c in constraints]
+    if 'chapters_novel_id_chapter_number_key' in constraint_names:
+        op.drop_constraint('chapters_novel_id_chapter_number_key', 'chapters', type_='unique')
+    # 检查索引是否存在后再删除
+    indexes = inspector.get_indexes('chapters')
+    index_names = [idx['name'] for idx in indexes]
+    if 'ix_chapters_novel_id' in index_names:
+        op.drop_index(op.f('ix_chapters_novel_id'), table_name='chapters')
+
+    # 检查列是否存在后再删除
+    columns = inspector.get_columns('chapters')
+    column_names = [col['name'] for col in columns]
+    if 'word_count' in column_names:
+        op.drop_column('chapters', 'word_count')
+
+    # 检查novels表的索引
+    novels_indexes = inspector.get_indexes('novels')
+    novels_index_names = [idx['name'] for idx in novels_indexes]
+    if 'ix_novels_user_id' in novels_index_names:
+        op.drop_index(op.f('ix_novels_user_id'), table_name='novels')
+    # 检查并创建索引
+    if 'ix_novels_title' not in novels_index_names:
+        op.create_index(op.f('ix_novels_title'), 'novels', ['title'], unique=False)
+
+    # 检查options表索引
+    options_indexes = inspector.get_indexes('options')
+    options_index_names = [idx['name'] for idx in options_indexes]
+    if 'ix_options_id' not in options_index_names:
+        op.create_index(op.f('ix_options_id'), 'options', ['id'], unique=False)
+    # 检查users表的约束和索引
+    users_constraints = inspector.get_unique_constraints('users')
+    users_constraint_names = [c['name'] for c in users_constraints]
+    if 'users_email_key' in users_constraint_names:
+        op.drop_constraint(op.f('users_email_key'), 'users', type_='unique')
+
+    users_indexes = inspector.get_indexes('users')
+    users_index_names = [idx['name'] for idx in users_indexes]
+    if 'ix_users_email' in users_index_names:
+        op.drop_index(op.f('ix_users_email'), table_name='users')
+
+    # 刷新索引列表后再创建
+    users_indexes = inspector.get_indexes('users')
+    users_index_names = [idx['name'] for idx in users_indexes]
+    if 'ix_users_email' not in users_index_names:
+        op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     # ### end Alembic commands ###
 
 
