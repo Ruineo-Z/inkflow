@@ -162,12 +162,18 @@ const ReadingPage = () => {
                     const optionData = JSON.parse(chunk.text);
                     streamingChapter.options.push({
                       id: optionData.id || `temp_${Date.now()}_${streamingChapter.options.length}`,
-                      option_text: optionData.text || optionData.option_text || `选项 ${streamingChapter.options.length + 1}`,
-                      impact_description: optionData.impact_hint || optionData.impact_description || ''
+                      option_text: optionData.text || `选项 ${streamingChapter.options.length + 1}`,
+                      impact_description: optionData.impact_hint || ''
                     });
                     console.log('🎯 添加选项:', optionData);
                   } catch (parseError) {
                     console.error('❌ 解析选项失败:', parseError, chunk.text);
+                    // 如果JSON解析失败，尝试直接使用文本
+                    streamingChapter.options.push({
+                      id: `temp_${Date.now()}_${streamingChapter.options.length}`,
+                      option_text: chunk.text,
+                      impact_description: ''
+                    });
                   }
                 }
               }
