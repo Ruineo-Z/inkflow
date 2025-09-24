@@ -94,6 +94,14 @@ export const router = createBrowserRouter([
     )
   },
   {
+    path: '/reading/:id',
+    element: (
+      <AuthGuard>
+        <ReadingPage />
+      </AuthGuard>
+    )
+  },
+  {
     path: '/profile',
     element: (
       <AuthGuard>

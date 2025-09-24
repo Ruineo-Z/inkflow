@@ -189,6 +189,12 @@ export class ChapterApi {
     return ApiService.get(`/chapters/${chapterId}`);
   }
 
+  // 获取小说的最新章节
+  static async getLatestChapter(novelId) {
+    const chapters = await ApiService.get(`/novels/${novelId}/chapters`);
+    return chapters && chapters.length > 0 ? chapters[chapters.length - 1] : null;
+  }
+
   // 生成新章节（流式，需要特殊处理）
   static async generateChapter(novelId) {
     return ApiService.post(`/novels/${novelId}/chapters/generate`, {});

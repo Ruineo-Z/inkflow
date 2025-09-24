@@ -162,6 +162,64 @@ class RedisTaskQueue:
 
         return result
 
+    async def add_content_chunk(
+        self,
+        task_id: str,
+        chunk_type: str,
+        text: str
+    ):
+        """添加结构化内容片段"""
+        import json
+
+        # 获取当前chunk索引
+        chunk_index = self.redis.llen(f"task:{task_id}:structured_chunks")
+
+        # 创建结构化chunk
+        chunk_data = {
+            "type": chunk_type,
+            "text": text,
+            "index": chunk_index
+        }
+
+        # 存储到Redis
+        self.redis.rpush(f"task:{task_id}:structured_chunks", json.dumps(chunk_data))
+
+        # 设置过期时间（1小时）
+        self.redis.expire(f"task:{task_id}:structured_chunks", 3600)
+
+        logger.info(f"📝 添加内容片段 - 任务ID: {task_id}, 类型: {chunk_type}, 索引: {chunk_index}")
+
+    async def get_structured_chunks(
+        self,
+        task_id: str,
+        from_chunk: int = 0
+    ) -> list:
+        """获取结构化内容片段（支持增量获取）"""
+        import json
+
+        # 获取从指定索引开始的chunks
+        all_chunks = self.redis.lrange(f"task:{task_id}:structured_chunks", from_chunk, -1)
+
+        result = []
+        for i, chunk_data in enumerate(all_chunks):
+            try:
+                if isinstance(chunk_data, bytes):
+                    chunk_data = chunk_data.decode()
+
+                chunk = json.loads(chunk_data)
+                # 确保index正确
+                chunk["index"] = from_chunk + i
+                result.append(chunk)
+            except json.JSONDecodeError:
+                logger.warning(f"⚠️  无法解析chunk数据 - 任务ID: {task_id}, 索引: {from_chunk + i}")
+                continue
+
+        return result
+
+    async def get_chunks_count(self, task_id: str) -> int:
+        """获取当前chunks总数"""
+        return self.redis.llen(f"task:{task_id}:structured_chunks")
+
     async def start_worker(self):
         """启动任务处理worker"""
         self._running = True
@@ -275,16 +333,33 @@ class RedisTaskQueue:
                             task_id, progress=50, current_step="AI正在生成章节内容..."
                         )
                     elif "event: summary" in sse_event:
+                        # 解析摘要数据并添加结构化chunk
+                        data_match = re.search(r'data: (.+)', sse_event)
+                        if data_match:
+                            summary_data = json.loads(data_match.group(1))
+                            await self.add_content_chunk(
+                                task_id,
+                                chunk_type="title",
+                                text=summary_data.get('title', '')
+                            )
                         await self.update_task_progress(
                             task_id, progress=70, current_step="摘要生成完成，正在生成正文..."
                         )
                     elif "event: content" in sse_event:
-                        # 捕获流式内容片段
+                        # 捕获流式内容片段并保存为结构化chunks
                         data_match = re.search(r'data: (.+)', sse_event)
                         if data_match:
                             content_data = json.loads(data_match.group(1))
                             content_chunk = content_data.get('text', '')
                             if content_chunk:
+                                # 存储为结构化content chunk
+                                await self.add_content_chunk(
+                                    task_id,
+                                    chunk_type="content",
+                                    text=content_chunk
+                                )
+
+                                # 保持旧的进度更新（兼容现有流式接口）
                                 await self.update_task_progress(
                                     task_id,
                                     current_step="正在生成章节内容...",
@@ -294,6 +369,23 @@ class RedisTaskQueue:
                         data_match = re.search(r'data: (.+)', sse_event)
                         if data_match:
                             chapter_data = json.loads(data_match.group(1))
+
+                            # 添加分隔符和选项chunks
+                            await self.add_content_chunk(
+                                task_id,
+                                chunk_type="separator",
+                                text="---"
+                            )
+
+                            # 添加选项chunks
+                            if 'options' in chapter_data:
+                                for i, option in enumerate(chapter_data['options'], 1):
+                                    option_text = f"选项{i}: {option.get('text', '')}"
+                                    await self.add_content_chunk(
+                                        task_id,
+                                        chunk_type="option",
+                                        text=option_text
+                                    )
                         break
                     elif "event: error" in sse_event:
                         data_match = re.search(r'data: (.+)', sse_event)
@@ -399,16 +491,33 @@ class RedisTaskQueue:
                             task_id, progress=50, current_step="AI正在生成章节内容..."
                         )
                     elif "event: summary" in sse_event:
+                        # 解析摘要数据并添加结构化chunk
+                        data_match = re.search(r'data: (.+)', sse_event)
+                        if data_match:
+                            summary_data = json.loads(data_match.group(1))
+                            await self.add_content_chunk(
+                                task_id,
+                                chunk_type="title",
+                                text=summary_data.get('title', '')
+                            )
                         await self.update_task_progress(
                             task_id, progress=70, current_step="摘要生成完成，正在生成正文..."
                         )
                     elif "event: content" in sse_event:
-                        # 捕获流式内容片段
+                        # 捕获流式内容片段并保存为结构化chunks
                         data_match = re.search(r'data: (.+)', sse_event)
                         if data_match:
                             content_data = json.loads(data_match.group(1))
                             content_chunk = content_data.get('text', '')
                             if content_chunk:
+                                # 存储为结构化content chunk
+                                await self.add_content_chunk(
+                                    task_id,
+                                    chunk_type="content",
+                                    text=content_chunk
+                                )
+
+                                # 保持旧的进度更新（兼容现有流式接口）
                                 await self.update_task_progress(
                                     task_id,
                                     current_step="正在生成章节内容...",
@@ -418,6 +527,23 @@ class RedisTaskQueue:
                         data_match = re.search(r'data: (.+)', sse_event)
                         if data_match:
                             chapter_data = json.loads(data_match.group(1))
+
+                            # 添加分隔符和选项chunks
+                            await self.add_content_chunk(
+                                task_id,
+                                chunk_type="separator",
+                                text="---"
+                            )
+
+                            # 添加选项chunks
+                            if 'options' in chapter_data:
+                                for i, option in enumerate(chapter_data['options'], 1):
+                                    option_text = f"选项{i}: {option.get('text', '')}"
+                                    await self.add_content_chunk(
+                                        task_id,
+                                        chunk_type="option",
+                                        text=option_text
+                                    )
                         break
                     elif "event: error" in sse_event:
                         data_match = re.search(r'data: (.+)', sse_event)

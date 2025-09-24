@@ -133,3 +133,20 @@ class StreamEvent(BaseModel):
     """流式输出事件模型"""
     event: str = Field(description="事件类型：summary/content/options/complete/error")
     data: dict = Field(description="事件数据")
+
+
+# === 增量内容获取模型（新增）===
+
+class ContentChunk(BaseModel):
+    """内容片段模型"""
+    type: str = Field(description="内容类型：title/content/separator/option")
+    text: str = Field(description="内容文本")
+    index: int = Field(description="片段索引")
+
+
+class IncrementalContentResponse(BaseModel):
+    """增量内容获取响应模型"""
+    chunks: List[ContentChunk] = Field(description="新增的内容片段")
+    next_chunk_index: int = Field(description="下一个片段的索引")
+    is_complete: bool = Field(description="生成是否完成")
+    progress: int = Field(description="生成进度百分比")

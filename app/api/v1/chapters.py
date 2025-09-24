@@ -15,7 +15,9 @@ from app.schemas.chapter import (
     ChapterGenerationProgress,
     SaveUserChoiceRequest,
     ChapterResponse,
-    UserChoiceResponse
+    UserChoiceResponse,
+    IncrementalContentResponse,
+    ContentChunk
 )
 from app.services.task import TaskService
 from app.models.task import TaskType as ModelTaskType
@@ -209,6 +211,77 @@ async def get_chapter_generation_progress(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"查询进度失败: {str(e)}"
+        )
+
+
+@router.get("/novels/{novel_id}/chapters/generate/{task_id}/content", response_model=IncrementalContentResponse, summary="获取章节生成增量内容")
+async def get_chapter_generation_content(
+    novel_id: int,
+    task_id: str,
+    from_chunk: int = Query(0, ge=0, description="起始chunk索引，支持增量获取"),
+    current_user_id: int = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    获取章节生成的增量内容，支持轮询和断点续看
+
+    - 返回结构化的content chunks，便于前端渲染
+    - 支持from_chunk参数实现增量获取
+    - 配合轮询实现流式用户体验
+    """
+    try:
+        task_service = TaskService(db)
+
+        # 验证任务权限
+        progress = await task_service.get_task_progress(task_id, current_user_id)
+        if not progress:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="任务不存在或无权访问"
+            )
+
+        # 验证任务是否属于指定小说
+        if progress.result_data and "novel_id" in progress.result_data:
+            if progress.result_data["novel_id"] != novel_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="任务不属于此小说"
+                )
+
+        # 获取结构化内容chunks
+        from app.services.redis_queue import get_task_queue
+        task_queue = get_task_queue()
+
+        chunks_data = await task_queue.get_structured_chunks(task_id, from_chunk)
+        total_chunks = await task_queue.get_chunks_count(task_id)
+
+        # 转换为Response模型
+        chunks = [
+            ContentChunk(
+                type=chunk["type"],
+                text=chunk["text"],
+                index=chunk["index"]
+            )
+            for chunk in chunks_data
+        ]
+
+        # 判断是否完成
+        is_complete = progress.status in ["COMPLETED", "FAILED"]
+
+        return IncrementalContentResponse(
+            chunks=chunks,
+            next_chunk_index=total_chunks,
+            is_complete=is_complete,
+            progress=progress.progress_percentage
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 获取增量内容失败: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"获取内容失败: {str(e)}"
         )
 
 

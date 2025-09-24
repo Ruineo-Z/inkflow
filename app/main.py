@@ -35,11 +35,17 @@ async def lifespan(app: FastAPI):
 
         # 初始化Redis连接
         logger.info("初始化Redis连接...")
-        redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+        redis_client = redis.Redis(
+            host=settings.REDIS_HOST,
+            port=settings.REDIS_PORT,
+            db=settings.REDIS_DB,
+            password=settings.REDIS_PASSWORD if settings.REDIS_PASSWORD else None,
+            decode_responses=True
+        )
 
         # 测试Redis连接
         redis_client.ping()
-        logger.info("✅ Redis连接成功")
+        logger.info(f"✅ Redis连接成功 - {settings.REDIS_HOST}:{settings.REDIS_PORT}/{settings.REDIS_DB}")
 
         # 初始化任务队列
         task_queue = init_task_queue(redis_client)
@@ -86,7 +92,7 @@ def create_app() -> FastAPI:
     # CORS配置
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:8080", "http://localhost:3000", "http://localhost:5173"],
+        allow_origins=["http://localhost:8080", "http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://localhost:5177", "http://localhost:5178", "http://localhost:5179"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

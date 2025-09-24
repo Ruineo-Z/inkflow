@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     TESTING: bool = False
 
+    # Redis配置
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+
     # Kimi大模型配置
     KIMI_API_KEY: str = ""
     KIMI_BASE_URL: str = "https://api.moonshot.cn/v1"
