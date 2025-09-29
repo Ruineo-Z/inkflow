@@ -58,8 +58,11 @@ class DatabaseMigrationManager:
                 result = await conn.execute(text("SELECT version_num FROM alembic_version"))
                 version = result.scalar()
                 return version
+        except ConnectionError as e:
+            logger.error(f"数据库连接失败: {e}")
+            return None
         except Exception as e:
-            logger.error(f"获取数据库版本失败: {e}")
+            logger.error(f"获取数据库版本失败（SQL执行错误）: {e}")
             return None
 
     def get_latest_revision(self) -> Optional[str]:
@@ -98,8 +101,8 @@ class DatabaseMigrationManager:
         loop = asyncio.get_event_loop()
         try:
             # 在线程池中运行同步的迁移操作
-            await loop.run_in_executor(None, self.run_migrations_sync)
-            return True
+            result = await loop.run_in_executor(None, self.run_migrations_sync)
+            return result
         except Exception as e:
             logger.error(f"异步执行数据库迁移失败: {e}")
             return False
@@ -109,12 +112,18 @@ class DatabaseMigrationManager:
         try:
             if await self.needs_migration():
                 logger.info("检测到需要执行数据库迁移")
-                return await self.run_migrations()
+                result = await self.run_migrations()
+                if not result:
+                    logger.error("数据库迁移执行失败，应用启动终止")
+                return result
             else:
                 logger.info("数据库已是最新版本，无需迁移")
                 return True
+        except ConnectionError as e:
+            logger.error(f"数据库连接失败，无法进行迁移检查: {e}")
+            return False
         except Exception as e:
-            logger.error(f"自动迁移检查失败: {e}")
+            logger.error(f"自动迁移检查失败（未知错误）: {e}")
             return False
 
 

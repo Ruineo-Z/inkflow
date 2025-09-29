@@ -55,7 +55,8 @@
       "Bash(docker-compose:*)",
       "Bash(DATABASE_URL=\"postgresql://admin:admin123@localhost:5432/inkflow\" uv run alembic current)",
       "Bash(DATABASE_URL:*)",
-      "Bash(uv add:*)"
+      "Bash(uv add:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []
