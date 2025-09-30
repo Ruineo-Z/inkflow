@@ -50,6 +50,90 @@ def get_password_hash(password: str) -> str:
     """获取密码哈希"""
     return pwd_context.hash(password)
 
+def create_resume_token(
+    chapter_id: int,
+    session_id: str,
+    novel_id: int,
+    user_id: int,
+    sent_length: int = 0
+) -> str:
+    """
+    创建章节生成恢复令牌（用于断线重连）
+
+    Args:
+        chapter_id: 章节ID
+        session_id: 生成会话ID
+        novel_id: 小说ID
+        user_id: 用户ID
+        sent_length: 已发送内容长度
+
+    Returns:
+        str: JWT格式的resume_token
+
+    Note:
+        - 有效期10分钟（与ChatGPT一致）
+        - 包含session_id防止跨会话重放
+        - 包含user_id防止跨用户访问
+    """
+    to_encode = {
+        "chapter_id": chapter_id,
+        "session_id": session_id,
+        "novel_id": novel_id,
+        "user_id": user_id,
+        "sent_length": sent_length,
+        "type": "resume",
+        "iat": int(datetime.utcnow().timestamp())
+    }
+    expire = datetime.utcnow() + timedelta(minutes=10)
+    to_encode.update({"exp": expire})
+
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+
+def verify_resume_token(token: str) -> Optional[dict]:
+    """
+    验证章节生成恢复令牌
+
+    Args:
+        token: resume_token字符串
+
+    Returns:
+        Optional[dict]: 解析后的payload，验证失败返回None
+
+    Payload结构:
+        {
+            "chapter_id": int,
+            "session_id": str,
+            "novel_id": int,
+            "user_id": int,
+            "sent_length": int,
+            "type": "resume",
+            "iat": int,
+            "exp": int
+        }
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+        # 验证token类型
+        if payload.get("type") != "resume":
+            return None
+
+        # 验证必需字段
+        required_fields = ["chapter_id", "session_id", "novel_id", "user_id", "sent_length"]
+        if not all(field in payload for field in required_fields):
+            return None
+
+        return payload
+    except jwt.ExpiredSignatureError:
+        # Token过期
+        return None
+    except jwt.JWTError:
+        # 签名无效或其他JWT错误
+        return None
+
+
 def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)) -> int:
     """获取当前用户ID"""
     token = credentials.credentials

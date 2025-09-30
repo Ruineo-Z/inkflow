@@ -1,10 +1,11 @@
 import logging
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 from sqlalchemy import select, desc, asc, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.chapter import Chapter
+from app.models.chapter import Chapter, ChapterStatus
 from app.models.option import Option, UserChoice
 from app.models.novel import Novel
 from app.schemas.chapter import (
@@ -51,8 +52,20 @@ class ChapterService:
 
         return chapter
 
-    async def update_chapter_content(self, chapter_id: int, content: str) -> Chapter:
-        """更新章节正文内容"""
+    async def update_chapter_content(
+        self,
+        chapter_id: int,
+        content: str,
+        content_length: Optional[int] = None
+    ) -> Chapter:
+        """
+        更新章节正文内容
+
+        Args:
+            chapter_id: 章节ID
+            content: 章节内容
+            content_length: 内容长度(可选,默认自动计算)
+        """
         result = await self.db.execute(
             select(Chapter).where(Chapter.id == chapter_id)
         )
@@ -60,6 +73,44 @@ class ChapterService:
 
         if chapter:
             chapter.content = content
+            chapter.content_length = content_length if content_length is not None else len(content)
+            await self.db.commit()
+            await self.db.refresh(chapter)
+
+        return chapter
+
+    async def update_chapter_status(
+        self,
+        chapter_id: int,
+        status: 'ChapterStatus',
+        session_id: Optional[str] = None,
+        generation_started_at: Optional[datetime] = None,
+        generation_completed_at: Optional[datetime] = None
+    ) -> Chapter:
+        """
+        更新章节生成状态
+
+        Args:
+            chapter_id: 章节ID
+            status: 章节状态
+            session_id: 生成会话ID(可选)
+            generation_started_at: 生成开始时间(可选)
+            generation_completed_at: 生成完成时间(可选)
+        """
+        result = await self.db.execute(
+            select(Chapter).where(Chapter.id == chapter_id)
+        )
+        chapter = result.scalar_one_or_none()
+
+        if chapter:
+            chapter.status = status
+            if session_id is not None:
+                chapter.session_id = session_id
+            if generation_started_at is not None:
+                chapter.generation_started_at = generation_started_at
+            if generation_completed_at is not None:
+                chapter.generation_completed_at = generation_completed_at
+
             await self.db.commit()
             await self.db.refresh(chapter)
 
