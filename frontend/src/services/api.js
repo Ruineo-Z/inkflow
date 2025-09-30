@@ -9,6 +9,88 @@ class ApiService {
     return localStorage.getItem('access_token');
   }
 
+  static getRefreshToken() {
+    return localStorage.getItem('refresh_token');
+  }
+
+  static async refreshAccessToken() {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) {
+      const error = new Error('No refresh token available');
+      error.code = 'NO_REFRESH_TOKEN';
+      throw error;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.detail || 'Failed to refresh token');
+        error.status = response.status;
+        error.code = response.status === 401 ? 'INVALID_REFRESH_TOKEN' : 'REFRESH_FAILED';
+
+        console.error('Token refresh failed:', {
+          status: response.status,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+
+        throw error;
+      }
+
+      const data = await response.json();
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('refresh_token', data.refresh_token);
+
+      console.log('Token refreshed successfully at', new Date().toISOString());
+      return data;
+
+    } catch (error) {
+      // 网络错误
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        error.code = 'NETWORK_ERROR';
+        console.error('Network error during token refresh:', error);
+      }
+      throw error;
+    }
+  }
+
+  static decodeToken(token) {
+    if (!token || typeof token !== 'string') {
+      throw new Error('Invalid token: must be a non-empty string');
+    }
+
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid token format: expected 3 parts');
+    }
+
+    try {
+      const base64Url = parts[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Token decode failed:', {
+        error: error.message,
+        tokenPreview: token.substring(0, 20) + '...'
+      });
+      throw new Error(`Failed to decode token: ${error.message}`);
+    }
+  }
+
   static async request(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
     const token = this.getAuthToken();
