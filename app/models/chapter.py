@@ -31,6 +31,12 @@ class Chapter(Base):
         server_default="completed"
     )
     session_id = Column(String(100), nullable=True)  # 生成会话ID
+    content_length = Column(
+        Integer,
+        nullable=False,
+        default=0,           # Python层默认值（ORM创建对象时使用）
+        server_default='0'   # 数据库层默认值（直接SQL插入时使用）
+    )  # 内容长度（用于断线重连判断差异）
     generation_started_at = Column(DateTime(timezone=True), nullable=True)  # 生成开始时间
     generation_completed_at = Column(DateTime(timezone=True), nullable=True)  # 生成完成时间
 
