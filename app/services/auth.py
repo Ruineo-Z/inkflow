@@ -76,11 +76,13 @@ class AuthService:
         if not user:
             return None
 
-        # 创建新的访问令牌
+        # 创建新的访问令牌和刷新令牌
         access_token = create_access_token(data={"sub": str(user.id)})
+        new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
 
         return {
             "access_token": access_token,
+            "refresh_token": new_refresh_token,
             "token_type": "bearer"
         }
 
