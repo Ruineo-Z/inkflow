@@ -3,11 +3,13 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import redis.asyncio as redis
 
 from app.api import router as api_router
 from app.core.config import settings
 from app.db.database import engine
 from app.db.migration import run_auto_migration
+from app.db.redis import RedisClient
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -20,20 +22,32 @@ async def lifespan(app: FastAPI):
     # 启动时执行
     logger.info("应用正在启动...")
 
+    # 执行数据库迁移
     try:
-        # 执行数据库迁移
         logger.info("检查并执行数据库迁移...")
         migration_success = await run_auto_migration(engine)
 
         if migration_success:
             logger.info("🎉 数据库已准备就绪")
         else:
-            logger.error("⚠️  数据库迁移失败，但应用将继续启动")
-
+            logger.error("❌ 数据库迁移失败")
+            raise RuntimeError("数据库迁移失败，应用无法启动")
     except Exception as e:
-        logger.error(f"启动时发生错误: {e}")
-        # 可以选择是否要因迁移失败而终止应用启动
-        # raise e  # 取消注释以在迁移失败时终止启动
+        logger.error(f"❌ 数据库迁移错误: {e}")
+        raise
+
+    # 初始化Redis连接
+    try:
+        logger.info("正在连接Redis...")
+        redis_client = await RedisClient.get_client()
+        await redis_client.ping()
+        logger.info("✅ Redis连接成功")
+    except redis.RedisError as e:
+        logger.error(f"❌ Redis连接失败: {e}")
+        raise RuntimeError(f"Redis连接失败，应用无法启动: {e}")
+    except Exception as e:
+        logger.error(f"❌ Redis初始化错误: {e}")
+        raise
 
     logger.info("应用启动完成")
 
@@ -41,6 +55,8 @@ async def lifespan(app: FastAPI):
 
     # 关闭时执行
     logger.info("应用正在关闭...")
+    await RedisClient.close()
+    logger.info("Redis连接已关闭")
 
 
 def create_app() -> FastAPI:

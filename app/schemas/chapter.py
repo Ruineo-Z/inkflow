@@ -2,6 +2,7 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 from app.schemas.option_tags import OptionTags, OptionWeightFactors, TaggedChapterOption
+from app.models.chapter import ChapterStatus
 
 
 # === 基础模型 ===
@@ -10,6 +11,7 @@ class ChapterBase(BaseModel):
     title: str = Field(description="章节标题")
     summary: Optional[str] = Field(None, description="章节摘要")
     content: Optional[str] = Field(None, description="章节正文")
+    status: Optional[ChapterStatus] = Field(ChapterStatus.COMPLETED, description="章节生成状态")
 
 
 class OptionBase(BaseModel):
@@ -45,6 +47,10 @@ class ChapterResponse(ChapterBase):
     id: int
     chapter_number: int
     novel_id: int
+    status: ChapterStatus
+    session_id: Optional[str] = None
+    generation_started_at: Optional[datetime] = None
+    generation_completed_at: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     options: List[OptionResponse] = []

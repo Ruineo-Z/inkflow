@@ -1,8 +1,16 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from enum import Enum as PyEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
-from app.db.database import Base
+from app.db.base import Base
+
+
+class ChapterStatus(str, PyEnum):
+    """章节生成状态枚举"""
+    GENERATING = "generating"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class Chapter(Base):
@@ -14,6 +22,18 @@ class Chapter(Base):
     title = Column(String(200), nullable=False)  # 章节标题
     summary = Column(Text)  # 章节摘要
     content = Column(Text)  # 章节正文
+
+    # 流式生成相关字段
+    status = Column(
+        Enum(ChapterStatus),
+        nullable=False,
+        default=ChapterStatus.COMPLETED,
+        server_default="completed"
+    )
+    session_id = Column(String(100), nullable=True)  # 生成会话ID
+    generation_started_at = Column(DateTime(timezone=True), nullable=True)  # 生成开始时间
+    generation_completed_at = Column(DateTime(timezone=True), nullable=True)  # 生成完成时间
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -56,7 +56,14 @@
       "Bash(DATABASE_URL=\"postgresql://admin:admin123@localhost:5432/inkflow\" uv run alembic current)",
       "Bash(DATABASE_URL:*)",
       "Bash(uv add:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(DATABASE_URL=\"postgresql://admin:admin123@localhost:5432/inkflow\" uv run alembic upgrade head)",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"\\d chapters\")",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"SELECT version_num FROM alembic_version;\")",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"UPDATE alembic_version SET version_num = ''316cc97feb71'';\")",
+      "Bash(python:*)",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"SELECT id, title, status, LEFT(content, 50) as content_preview FROM chapters LIMIT 5;\")",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"\\dT+ chapterstatus\")"
     ],
     "deny": [],
     "ask": []

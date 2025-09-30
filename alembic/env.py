@@ -11,7 +11,7 @@ from alembic import context
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.core.config import settings
-from app.db.database import Base
+from app.db.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -26,7 +26,7 @@ config.set_main_option("sqlalchemy.url", database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# 导入所有模型以确保它们被注册到 Base.metadata
+# 导入所有模型以确保它们注册到Base.metadata
 from app.models import User, Novel, Chapter, Option
 
 # add your model's MetaData object here

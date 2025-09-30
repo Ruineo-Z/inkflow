@@ -268,3 +268,4 @@ init.sql
 start-db.*
 stop-db.*
 code-review/
+.code-review/

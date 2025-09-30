@@ -1,5 +1,9 @@
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class Settings(BaseSettings):
     # 项目基础配置
@@ -19,6 +23,13 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"
+
+    # Redis配置
+    REDIS_HOST: str = "localhost"  # 开发环境使用localhost，生产环境通过.env配置
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: Optional[str] = None  # None表示无密码，生产环境必须配置
+    REDIS_STREAM_CACHE_TTL: int = 3600  # 流式内容缓存1小时
 
     # 开发/生产环境
     DEBUG: bool = True
@@ -44,5 +55,12 @@ class Settings(BaseSettings):
         "case_sensitive": True,
         "extra": "ignore"
     }
+
+    def model_post_init(self, __context):
+        """配置验证钩子 - 在模型初始化后执行"""
+        # 生产环境检查Redis密码
+        if not self.DEBUG and not self.REDIS_PASSWORD:
+            logger.warning("⚠️  生产环境Redis未配置密码！这可能导致安全风险。")
+
 
 settings = Settings()
