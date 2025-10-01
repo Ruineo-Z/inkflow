@@ -63,7 +63,12 @@
       "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"UPDATE alembic_version SET version_num = ''316cc97feb71'';\")",
       "Bash(python:*)",
       "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"SELECT id, title, status, LEFT(content, 50) as content_preview FROM chapters LIMIT 5;\")",
-      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"\\dT+ chapterstatus\")"
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"\\dT+ chapterstatus\")",
+      "Bash(DATABASE_URL=\"postgresql://admin:admin123@localhost:5432/inkflow\" uv run alembic history)",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"UPDATE alembic_version SET version_num = ''ce0b5e4d2b89'';\")",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"DROP TYPE IF EXISTS chapterstatus CASCADE;\")",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"\n-- 重新添加status列\nALTER TABLE chapters ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT ''completed'';\n\n-- 创建枚举类型\nCREATE TYPE chapterstatus AS ENUM (''generating'', ''completed'', ''failed'');\n\n-- 修改列类型\nALTER TABLE chapters ALTER COLUMN status DROP DEFAULT;\nALTER TABLE chapters ALTER COLUMN status TYPE chapterstatus USING status::chapterstatus;\nALTER TABLE chapters ALTER COLUMN status SET DEFAULT ''completed''::chapterstatus;\n\")",
+      "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"UPDATE alembic_version SET version_num = ''07f492baa56a'';\")"
     ],
     "deny": [],
     "ask": []

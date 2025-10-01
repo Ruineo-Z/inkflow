@@ -469,6 +469,7 @@ class ChapterService:
                 "title": chapter.title,
                 "summary": chapter.summary,
                 "content": chapter.content,
+                "status": chapter.status.value if chapter.status else None,
                 "created_at": chapter.created_at,
                 "updated_at": chapter.updated_at,
                 "options": [
@@ -522,6 +523,7 @@ class ChapterService:
             "title": chapter.title,
             "summary": chapter.summary,
             "content": chapter.content,
+            "status": chapter.status.value if chapter.status else None,
             "created_at": chapter.created_at,
             "updated_at": chapter.updated_at,
             "options": [

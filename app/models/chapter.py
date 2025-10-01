@@ -25,7 +25,7 @@ class Chapter(Base):
 
     # 流式生成相关字段
     status = Column(
-        Enum(ChapterStatus),
+        Enum(ChapterStatus, values_callable=lambda obj: [e.value for e in obj]),
         nullable=False,
         default=ChapterStatus.COMPLETED,
         server_default="completed"
