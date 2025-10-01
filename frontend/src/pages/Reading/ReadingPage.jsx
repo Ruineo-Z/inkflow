@@ -70,6 +70,31 @@ const ReadingPage = () => {
   useEffect(() => {
     const init = async () => {
       setLoading(true);
+
+      // 检查是否有正在生成的章节数据
+      const cachedData = localStorage.getItem(`chapter_generating_${novelId}`);
+      if (cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          console.log('从localStorage读取的数据:', parsed);
+          if (parsed.status === 'generating') {
+            // 恢复生成中的章节显示
+            const restoredChapter = {
+              title: parsed.title || '生成中...',
+              content: parsed.content || '',
+              isStreaming: true,
+              options: []
+            };
+            console.log('恢复的章节对象:', restoredChapter);
+            setCurrentChapter(restoredChapter);
+            setGeneratingChapter(true);
+          }
+        } catch (e) {
+          console.error('解析localStorage数据失败:', e);
+          localStorage.removeItem(`chapter_generating_${novelId}`);
+        }
+      }
+
       await Promise.all([loadNovel(), loadChapters()]);
       setLoading(false);
     };
@@ -78,6 +103,37 @@ const ReadingPage = () => {
       init();
     }
   }, [novelId, chapterId]);
+
+  // 监听localStorage变化,实时更新生成中的章节内容
+  useEffect(() => {
+    const handleStorageUpdate = () => {
+      const cachedData = localStorage.getItem(`chapter_generating_${novelId}`);
+      if (cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          if (parsed.status === 'generating') {
+            console.log('[轮询] 更新内容,标题:', parsed.title, '内容长度:', parsed.content?.length);
+            setCurrentChapter(prev => ({
+              ...prev,
+              title: parsed.title || prev?.title || '生成中...',
+              content: parsed.content || prev?.content || '',
+              isStreaming: true,
+              options: []
+            }));
+          }
+        } catch (e) {
+          console.error('监听localStorage更新失败:', e);
+        }
+      }
+    };
+
+    // 使用setInterval轮询localStorage变化(因为同一个标签页内storage事件不会触发)
+    const intervalId = setInterval(handleStorageUpdate, 500);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [novelId]);
 
   // 选择选项
   const handleOptionSelect = (option) => {
@@ -152,6 +208,10 @@ const ReadingPage = () => {
 
       // 累积的原始JSON字符串，用于智能解析
       let accumulatedJson = '';
+
+      // 获取resume_token用于断线重连
+      const resumeToken = response.headers.get('X-Resume-Token');
+      console.log('Resume Token:', resumeToken);
 
       // 创建流式章节显示
       setCurrentChapter({
@@ -239,6 +299,9 @@ const ReadingPage = () => {
         const { done, value } = await reader.read();
         if (done) break;
 
+        // 测试: 验证离开页面后是否还在接收数据
+        console.log('[测试] 收到新数据块,时间:', new Date().toLocaleTimeString());
+
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
 
@@ -265,6 +328,16 @@ const ReadingPage = () => {
             if (dataLine && dataLine.startsWith('data: ')) {
               const data = JSON.parse(dataLine.substring(6));
               streamingChapter.title = data.title;
+
+              // 保存标题到localStorage
+              localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify({
+                title: streamingChapter.title,
+                content: streamingChapter.content,
+                resumeToken: resumeToken,
+                timestamp: Date.now(),
+                status: 'generating'
+              }));
+
               setCurrentChapter({
                 ...streamingChapter,
                 isStreaming: true
@@ -286,6 +359,17 @@ const ReadingPage = () => {
 
                 if (extractedContent && extractedContent !== streamingChapter.content) {
                   streamingChapter.content = extractedContent;
+
+                  // 保存到localStorage,确保离开页面后也能恢复
+                  const dataToSave = {
+                    title: streamingChapter.title,
+                    content: streamingChapter.content,
+                    resumeToken: resumeToken,
+                    timestamp: Date.now(),
+                    status: 'generating'
+                  };
+                  console.log('[保存] 标题:', dataToSave.title, '内容长度:', dataToSave.content?.length);
+                  localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify(dataToSave));
 
                   // 实时更新章节显示
                   setCurrentChapter({
@@ -339,6 +423,9 @@ const ReadingPage = () => {
       }
 
       if (newChapterData) {
+        // 章节生成完成,清理localStorage中的临时数据
+        localStorage.removeItem(`chapter_generating_${novelId}`);
+
         // 重新加载章节列表
         await loadChapters();
 
