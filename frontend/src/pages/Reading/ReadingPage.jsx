@@ -73,6 +73,8 @@ const ReadingPage = () => {
 
       // 检查是否有正在生成的章节数据
       const cachedData = localStorage.getItem(`chapter_generating_${novelId}`);
+      let isRestoring = false;
+
       if (cachedData) {
         try {
           const parsed = JSON.parse(cachedData);
@@ -88,6 +90,7 @@ const ReadingPage = () => {
             console.log('恢复的章节对象:', restoredChapter);
             setCurrentChapter(restoredChapter);
             setGeneratingChapter(true);
+            isRestoring = true;
           }
         } catch (e) {
           console.error('解析localStorage数据失败:', e);
@@ -95,7 +98,14 @@ const ReadingPage = () => {
         }
       }
 
-      await Promise.all([loadNovel(), loadChapters()]);
+      await loadNovel();
+
+      // 只有在不是恢复生成中章节的情况下才加载章节列表
+      // 因为loadChapters会覆盖currentChapter
+      if (!isRestoring) {
+        await loadChapters();
+      }
+
       setLoading(false);
     };
 
@@ -118,7 +128,7 @@ const ReadingPage = () => {
               title: parsed.title || prev?.title || '生成中...',
               content: parsed.content || prev?.content || '',
               isStreaming: true,
-              options: []
+              options: prev?.options || []
             }));
           }
         } catch (e) {
@@ -361,15 +371,13 @@ const ReadingPage = () => {
                   streamingChapter.content = extractedContent;
 
                   // 保存到localStorage,确保离开页面后也能恢复
-                  const dataToSave = {
+                  localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify({
                     title: streamingChapter.title,
                     content: streamingChapter.content,
                     resumeToken: resumeToken,
                     timestamp: Date.now(),
                     status: 'generating'
-                  };
-                  console.log('[保存] 标题:', dataToSave.title, '内容长度:', dataToSave.content?.length);
-                  localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify(dataToSave));
+                  }));
 
                   // 实时更新章节显示
                   setCurrentChapter({
@@ -411,11 +419,12 @@ const ReadingPage = () => {
                 };
               }
 
-              // 设置最终完整的章节
-              setCurrentChapter({
-                ...newChapterData,
+              // 只更新options和isStreaming状态,保持内容不变(避免触发滚动)
+              setCurrentChapter(prev => ({
+                ...prev,
+                options: newChapterData.options,
                 isStreaming: false
-              });
+              }));
               break;
             }
           }
@@ -426,13 +435,30 @@ const ReadingPage = () => {
         // 章节生成完成,清理localStorage中的临时数据
         localStorage.removeItem(`chapter_generating_${novelId}`);
 
-        // 重新加载章节列表
-        await loadChapters();
+        // 只更新chapters列表,不调用loadChapters避免重置currentChapter
+        // 直接添加新章节到列表末尾
+        setChapters(prev => [...prev, {
+          id: newChapterData.id,
+          chapter_number: prev.length + 1,
+          title: newChapterData.title,
+          status: 'completed'
+        }]);
 
-        // 导航到新章节
-        navigate(`/novels/${novelId}/chapters/${newChapterData.id}`);
+        // 检查用户是否还在阅读页面
+        const currentPath = window.location.pathname;
+        const isOnReadingPage = currentPath.includes(`/novels/${novelId}/chapters`) ||
+                                currentPath === `/novels/${novelId}`;
+
+        if (isOnReadingPage) {
+          // 用户还在阅读页面,更新URL但不触发页面刷新(保持滚动位置)
+          window.history.replaceState(null, '', `/novels/${novelId}/chapters/${newChapterData.id}`);
+          showToast('新章节生成完成！');
+        } else {
+          // 用户已经离开,只提示不跳转
+          showToast('新章节已生成,可返回查看');
+        }
+
         setSelectedOption(null);
-        showToast('新章节生成完成！');
       }
 
     } catch (error) {

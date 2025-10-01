@@ -192,12 +192,14 @@ class ChapterGeneratorService:
    - 选项2：谨慎保守的选择
    - 选项3：冒险或意外的选择
 6. 每个选项都要有简短的影响提示
-7. 为每个选项添加标签分析，包含以下五个维度：
-   - action_type: 行动倾向（active/conservative/risky/diplomatic/aggressive）
-   - narrative_impact: 叙事影响（exploration/development/resolution/relationship/worldbuilding）
-   - character_focus: 角色发展（self_growth/relationship/world_interaction/skill_development/moral_choice）
-   - pacing_type: 节奏控制（slow/medium/fast）
-   - emotional_tone: 情感色彩（positive/neutral/dark/humorous/mysterious）
+7. 为每个选项添加标签分析，包含以下五个维度（请严格使用指定的值，不要混淆）：
+   - action_type: 行动倾向，必须是以下之一（active/conservative/risky/diplomatic/aggressive）
+   - narrative_impact: 叙事影响，必须是以下之一（exploration/development/resolution/relationship/worldbuilding）
+   - character_focus: 角色发展，必须是以下之一（self_growth/relationship/world_interaction/skill_development/moral_choice）
+   - pacing_type: 节奏控制，必须是以下之一（slow/medium/fast）
+   - emotional_tone: 情感色彩，必须是以下之一（positive/neutral/dark/humorous/mysterious）
+
+注意：不要将character_focus的值（如self_growth）用在narrative_impact字段，也不要将其他字段的值混用。每个字段都有其专属的可选值列表。
 
 请用JSON格式返回，包含title、content、options字段。
 options数组中每个选项包含：text、impact_hint、tags字段。
