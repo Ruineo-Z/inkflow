@@ -201,7 +201,7 @@ class ChapterGeneratorService:
 
 注意：不要将character_focus的值（如self_growth）用在narrative_impact字段，也不要将其他字段的值混用。每个字段都有其专属的可选值列表。
 
-请用JSON格式返回，包含title、content、options字段。
+请用JSON格式返回，包含content、options字段。
 options数组中每个选项包含：text、impact_hint、tags字段。
 tags字段包含上述五个标签维度。"""
 
@@ -283,8 +283,9 @@ tags字段包含上述五个标签维度。"""
                     yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
                 elif stream_chunk.chunk_type == "complete":
                     logger.info(f"✅ Step 2 完成: 章节正文和选项生成成功")
-                    # 添加摘要信息到完成数据中
+                    # 组装完整数据
                     complete_data = stream_chunk.data['result']
+                    complete_data['title'] = summary.title  # 使用摘要阶段的title
                     complete_data['summary'] = summary.dict()
 
                     # 统计信息
@@ -371,8 +372,9 @@ tags字段包含上述五个标签维度。"""
                     yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
                 elif stream_chunk.chunk_type == "complete":
                     logger.info(f"✅ Step 2 完成: 后续章节正文和选项生成成功")
-                    # 添加摘要信息到完成数据中
+                    # 组装完整数据
                     complete_data = stream_chunk.data['result']
+                    complete_data['title'] = summary.title  # 使用摘要阶段的title
                     complete_data['summary'] = summary.dict()
 
                     # 统计信息

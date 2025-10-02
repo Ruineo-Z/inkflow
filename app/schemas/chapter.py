@@ -93,9 +93,9 @@ class ChapterOption(BaseModel):
 
 class ChapterFullContent(BaseModel):
     """完整章节内容模型（流式输出用）"""
-    title: str = Field(description="章节标题")
     content: str = Field(description="章节正文内容")
     options: List[ChapterOption] = Field(description="三个选择选项")
+    # title字段已移除,统一使用ChapterSummary中的title
 
 
 # === 上下文模型 ===
