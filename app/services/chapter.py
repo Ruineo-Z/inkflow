@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.models.chapter import Chapter, ChapterStatus
 from app.models.option import Option, UserChoice
 from app.models.novel import Novel
-from app.schemas.chapter import ChapterContext
+from app.schemas.chapter import ChapterSummary, ChapterContext
 
 logger = logging.getLogger(__name__)
 
