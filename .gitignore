@@ -272,3 +272,4 @@ code-review/
 
 # YoYo AI version control directory
 .yoyo/
+.iteration/
