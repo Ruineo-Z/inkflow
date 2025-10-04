@@ -93,7 +93,8 @@
       "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"\nSELECT user_id FROM novels WHERE id = 16;\n\")",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzU5NTY3ODg1fQ.nflp0--HkM0ANZqF7_eGya9Slv3fxNDyw5XVwshNBFQ\")",
       "Bash(PGPASSWORD=admin123 psql -h localhost -U admin -d inkflow -c \"\\d novels\")",
-      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzU5NTY3ODg1fQ.nflp0--HkM0ANZqF7_eGya9Slv3fxNDyw5XVwshNBFQ\" curl -s -X POST \"http://localhost:8080/api/v1/novels/16/chapters/generate\" -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\" -d '{\"\"\"\"selected_option_id\"\"\"\": 151}')"
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyIiwiZXhwIjoxNzU5NTY3ODg1fQ.nflp0--HkM0ANZqF7_eGya9Slv3fxNDyw5XVwshNBFQ\" curl -s -X POST \"http://localhost:8080/api/v1/novels/16/chapters/generate\" -H \"Authorization: Bearer $TOKEN\" -H \"Content-Type: application/json\" -d '{\"\"\"\"selected_option_id\"\"\"\": 151}')",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []

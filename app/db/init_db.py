@@ -1,8 +1,11 @@
 import asyncio
+import logging
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import settings
 from app.db.database import Base
+
+logger = logging.getLogger(__name__)
 
 async def create_database():
     """创建数据库表"""
@@ -15,7 +18,7 @@ async def create_database():
         await conn.run_sync(Base.metadata.create_all)
 
     await engine.dispose()
-    print("Database tables created successfully!")
+    logger.info("Database tables created successfully!")
 
 if __name__ == "__main__":
     asyncio.run(create_database())

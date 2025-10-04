@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from openai import AsyncOpenAI
 
 from app.core.config import settings
-from app.schemas.kimi import KimiRequest, KimiResponse, StreamChunk
+from app.schemas.kimi import StreamChunk
 from app.utils.kimi_schema import KimiSchemaConverter
 
 logger = logging.getLogger(__name__)

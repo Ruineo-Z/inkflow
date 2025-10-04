@@ -18,7 +18,7 @@ import logging
 import uuid
 import json
 from datetime import datetime
-from typing import AsyncGenerator, Optional, Dict, Any
+from typing import AsyncGenerator, Optional
 from contextlib import asynccontextmanager
 
 import redis.asyncio as redis

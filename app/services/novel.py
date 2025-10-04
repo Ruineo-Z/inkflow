@@ -1,7 +1,6 @@
 from typing import List, Optional
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.models.novel import Novel
 from app.schemas.novel import NovelCreate, NovelUpdate

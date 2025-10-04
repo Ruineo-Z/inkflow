@@ -32,8 +32,8 @@ async def generate_chapter(
     """
     开始生成章节（立即返回chapter_id，不阻塞）
 
-    - 第一章：selected_option_id为null
-    - 后续章节：传入上一章选择的option_id
+    注意：用户选择已通过 /chapters/{chapter_id}/choice 接口保存，
+    生成时无需传递选项ID。
 
     返回：
     {

@@ -8,12 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.models.chapter import Chapter, ChapterStatus
 from app.models.option import Option, UserChoice
 from app.models.novel import Novel
-from app.schemas.chapter import (
-    ChapterSummary,
-    ChapterContext,
-    ChapterResponse,
-    OptionResponse
-)
+from app.schemas.chapter import ChapterContext
 
 logger = logging.getLogger(__name__)
 
@@ -316,15 +311,6 @@ class ChapterService:
 
         return context
 
-    async def get_chapter_by_id(self, chapter_id: int) -> Optional[Chapter]:
-        """根据ID获取章节信息（包含选项）"""
-        result = await self.db.execute(
-            select(Chapter)
-            .options(selectinload(Chapter.options))
-            .where(Chapter.id == chapter_id)
-        )
-        return result.scalar_one_or_none()
-
     async def get_latest_user_choice(
         self,
         user_id: int,
@@ -578,7 +564,7 @@ class ChapterService:
 
         except Exception as e:
             # 如果重置失败，记录错误但不影响主流程
-            print(f"Warning: Failed to reset chapter sequence: {e}")
+            logger.warning(f"Failed to reset chapter sequence: {e}")
 
     async def _reset_option_sequence(self) -> None:
         """重置选项ID序列到下一个可用值"""
@@ -598,7 +584,7 @@ class ChapterService:
 
         except Exception as e:
             # 如果重置失败，记录错误但不影响主流程
-            print(f"Warning: Failed to reset option sequence: {e}")
+            logger.warning(f"Failed to reset option sequence: {e}")
 
     def enable_auto_sequence_reset(self) -> None:
         """启用自动序列重置"""
