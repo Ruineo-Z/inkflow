@@ -25,6 +25,9 @@ from app.schemas.novel import NovelGenre
 from app.services.kimi import kimi_service
 from app.services.chapter import ChapterService
 from app.services.novel import NovelService
+from app.services.stream_manager import StreamGenerationManager, managed_stream_generation
+from app.utils.json_extractor import extract_content_from_json_fragment
+from app.models.chapter import ChapterStatus
 
 
 class ChapterGeneratorService:
@@ -199,7 +202,19 @@ class ChapterGeneratorService:
    - pacing_type: 节奏控制，必须是以下之一（slow/medium/fast）
    - emotional_tone: 情感色彩，必须是以下之一（positive/neutral/dark/humorous/mysterious）
 
-注意：不要将character_focus的值（如self_growth）用在narrative_impact字段，也不要将其他字段的值混用。每个字段都有其专属的可选值列表。
+【重要格式要求】：
+- content字段只包含章节正文，以悬念或情境描写结尾
+- **禁止在content中列举选项内容** (例如"一、...二、...三、...")
+- **禁止在content中展示选项编号或选项文本**
+- 选项内容全部放在options数组中，每个选项是一个独立对象
+- content结尾应该是紧张的情境或悬念，让读者期待选择，但不要写出具体选择
+
+错误示例：
+content: "...他停住脚步。前路三岔：一、闯王府；二、上峨眉；三、入青城。他该如何选择？"
+
+正确示例：
+content: "...他停住脚步，三条山路在雨中若隐若现，每一条都通向未知的命运。"
+options: [{{text: "直闯蜀王府...", ...}}, {{text: "先上峨眉医宗...", ...}}, ...]
 
 请用JSON格式返回，包含content、options字段。
 options数组中每个选项包含：text、impact_hint、tags字段。
@@ -271,6 +286,7 @@ tags字段包含上述五个标签维度。"""
 
             # 使用流式输出生成正文和选项
             content_char_count = 0
+
             async for stream_chunk in kimi_service.generate_streaming_output(
                 model_class=ChapterFullContent,
                 user_prompt=content_user_prompt,
@@ -278,9 +294,13 @@ tags字段包含上述五个标签维度。"""
             ):
                 # 将StreamChunk转换为SSE格式
                 if stream_chunk.chunk_type == "content":
+                    # 原始chunk（JSON片段）
                     chunk_text = stream_chunk.data['chunk']
-                    content_char_count += len(chunk_text)
-                    yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
+
+                    # 直接发送原始chunk（待重新设计解析逻辑）
+                    if chunk_text:
+                        content_char_count += len(chunk_text)
+                        yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
                 elif stream_chunk.chunk_type == "complete":
                     logger.info(f"✅ Step 2 完成: 章节正文和选项生成成功")
                     # 组装完整数据
@@ -368,8 +388,12 @@ tags字段包含上述五个标签维度。"""
             ):
                 # 将StreamChunk转换为SSE格式
                 if stream_chunk.chunk_type == "content":
+                    # 原始chunk（JSON片段）
                     chunk_text = stream_chunk.data['chunk']
-                    yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
+
+                    # 直接发送原始chunk（待重新设计解析逻辑）
+                    if chunk_text:
+                        yield f"event: content\ndata: {json_dumps_chinese({'text': chunk_text})}\n\n"
                 elif stream_chunk.chunk_type == "complete":
                     logger.info(f"✅ Step 2 完成: 后续章节正文和选项生成成功")
                     # 组装完整数据
@@ -390,6 +414,223 @@ tags字段包含上述五个标签维度。"""
         except Exception as e:
             logger.error(f"❌ 后续章节生成过程异常: {str(e)}", exc_info=True)
             yield f"event: error\ndata: {json_dumps_chinese({'error': f'生成过程异常: {str(e)}'})}\n\n"
+
+    async def generate_first_chapter_background(
+        self,
+        chapter_id: int,
+        novel_id: int,
+        world_setting: str,
+        protagonist_info: str,
+        genre: str
+    ) -> None:
+        """
+        后台任务：生成第一章（存入Redis）
+
+        流程：
+        1. 生成摘要
+        2. 生成正文（流式）→ 提取content → 存Redis
+        3. 完成后存PostgreSQL
+
+        注意: 后台任务创建自己的数据库session,避免session被提前关闭
+        """
+        from app.db.database import async_session_maker
+
+        session_id = StreamGenerationManager.generate_session_id()
+
+        # 后台任务创建自己的数据库session
+        async with async_session_maker() as db:
+            async with managed_stream_generation(chapter_id, novel_id, session_id, db) as manager:
+                try:
+                    logger.info(f"🎯 后台任务：开始生成第一章 {chapter_id}")
+
+                    # Step 1: 生成摘要
+                    system_prompt, user_prompt = self._build_first_chapter_summary_prompt(
+                        world_setting, protagonist_info, genre
+                    )
+
+                    summary_result = await kimi_service.generate_structured_output(
+                        model_class=ChapterSummary,
+                        user_prompt=user_prompt,
+                        system_prompt=system_prompt
+                    )
+
+                    if not summary_result["success"]:
+                        raise Exception(f"摘要生成失败: {summary_result.get('error')}")
+
+                    summary = ChapterSummary(**summary_result["data"])
+                    logger.info(f"✅ 摘要生成成功: {summary.title}")
+
+                    # 初始化Redis（设置title）
+                    await manager.start_generation(summary.title)
+
+                    # Step 2: 生成正文
+                    context = ChapterContext(
+                        world_setting=world_setting,
+                        protagonist_info=protagonist_info,
+                        recent_chapters=[],
+                        chapter_summaries=[],
+                        selected_option=None
+                    )
+
+                    content_system_prompt, content_user_prompt = self._build_chapter_content_prompt(
+                        summary, context, genre
+                    )
+
+                    # 累积JSON用于提取
+                    accumulated_json = ""
+                    previous_content = ""  # 追踪上一次的内容,用于计算增量
+
+                    async for stream_chunk in kimi_service.generate_streaming_output(
+                        model_class=ChapterFullContent,
+                        user_prompt=content_user_prompt,
+                        system_prompt=content_system_prompt
+                    ):
+                        if stream_chunk.chunk_type == "content":
+                            # 累积JSON片段
+                            accumulated_json = stream_chunk.data['accumulated']
+
+                            # 提取纯文本content(这是累积的全部内容)
+                            current_content = extract_content_from_json_fragment(accumulated_json)
+
+                            # 计算增量chunk
+                            if current_content and len(current_content) > len(previous_content):
+                                incremental_chunk = current_content[len(previous_content):]
+                                await manager.append_chunk(incremental_chunk)
+                                previous_content = current_content
+
+                        elif stream_chunk.chunk_type == "complete":
+                            # 生成完成
+                            result = stream_chunk.data['result']
+                            final_content = result.get('content', '')
+                            options = result.get('options', [])
+
+                            logger.info(f"✅ 正文生成完成: {len(final_content)} 字符, {len(options)} 个选项")
+
+                            # 最终写入PostgreSQL并清理Redis(包含summary)
+                            await manager.complete_generation(
+                                final_content,
+                                options,
+                                summary=summary.summary  # 传入摘要文本
+                            )
+
+                        elif stream_chunk.chunk_type == "error":
+                            raise Exception(f"生成错误: {stream_chunk.data}")
+
+                    logger.info(f"🎉 第一章生成完成: {chapter_id}")
+
+                except Exception as e:
+                    logger.error(f"❌ 第一章后台生成失败: {e}")
+                    raise
+
+    async def generate_next_chapter_background(
+        self,
+        chapter_id: int,
+        novel_id: int,
+        selected_option_id: int,
+        genre: str
+    ) -> None:
+        """
+        后台任务：生成后续章节（存入Redis）
+
+        注意: 后台任务创建自己的数据库session,避免session被提前关闭
+        """
+        from app.db.database import async_session_maker
+
+        session_id = StreamGenerationManager.generate_session_id()
+
+        # 后台任务创建自己的数据库session
+        async with async_session_maker() as db:
+            async with managed_stream_generation(chapter_id, novel_id, session_id, db) as manager:
+                try:
+                    logger.info(f"🎯 后台任务：开始生成后续章节 {chapter_id}")
+
+                    # 构建上下文（省略详细代码，与generate_next_chapter_stream类似）
+                    chapter_service = ChapterService(db)
+                    novel_service = NovelService(db)
+
+                    # 获取小说信息和章节历史
+                    novel = await novel_service.get_by_id(novel_id)
+                    chapters = await chapter_service.get_chapters_by_novel(novel_id)
+
+                    # 构建上下文
+                    recent_chapters = [
+                        {
+                            "chapter_number": ch.chapter_number,
+                            "title": ch.title,
+                            "summary": getattr(ch, 'summary', ''),
+                            "content": ch.content[:500] if ch.content else ''
+                        }
+                        for ch in chapters[-3:] if ch.status == ChapterStatus.COMPLETED
+                    ]
+
+                    context = ChapterContext(
+                        world_setting=novel.background_setting or "",
+                        protagonist_info=novel.character_setting or "",
+                        recent_chapters=recent_chapters,
+                        chapter_summaries=[],
+                        selected_option=None  # TODO: 获取选项信息
+                    )
+
+                    # Step 1: 生成摘要
+                    system_prompt, user_prompt = self._build_next_chapter_summary_prompt(context, genre)
+
+                    summary_result = await kimi_service.generate_structured_output(
+                        model_class=ChapterSummary,
+                        user_prompt=user_prompt,
+                        system_prompt=system_prompt
+                    )
+
+                    if not summary_result["success"]:
+                        raise Exception(f"摘要生成失败: {summary_result.get('error')}")
+
+                    summary = ChapterSummary(**summary_result["data"])
+                    logger.info(f"✅ 摘要生成成功: {summary.title}")
+
+                    await manager.start_generation(summary.title)
+
+                    # Step 2: 生成正文
+                    content_system_prompt, content_user_prompt = self._build_chapter_content_prompt(
+                        summary, context, genre
+                    )
+
+                    accumulated_json = ""
+                    previous_content = ""  # 追踪上一次的内容,用于计算增量
+
+                    async for stream_chunk in kimi_service.generate_streaming_output(
+                        model_class=ChapterFullContent,
+                        user_prompt=content_user_prompt,
+                        system_prompt=content_system_prompt
+                    ):
+                        if stream_chunk.chunk_type == "content":
+                            accumulated_json = stream_chunk.data['accumulated']
+                            current_content = extract_content_from_json_fragment(accumulated_json)
+
+                            # 计算增量chunk
+                            if current_content and len(current_content) > len(previous_content):
+                                incremental_chunk = current_content[len(previous_content):]
+                                await manager.append_chunk(incremental_chunk)
+                                previous_content = current_content
+
+                        elif stream_chunk.chunk_type == "complete":
+                            result = stream_chunk.data['result']
+                            final_content = result.get('content', '')
+                            options = result.get('options', [])
+
+                            # 最终写入PostgreSQL并清理Redis(包含summary)
+                            await manager.complete_generation(
+                                final_content,
+                                options,
+                                summary=summary.summary  # 传入摘要文本
+                            )
+
+                        elif stream_chunk.chunk_type == "error":
+                            raise Exception(f"生成错误: {stream_chunk.data}")
+
+                    logger.info(f"🎉 后续章节生成完成: {chapter_id}")
+
+                except Exception as e:
+                    logger.error(f"❌ 后续章节后台生成失败: {e}")
+                    raise
 
 
 # 全局章节生成服务实例

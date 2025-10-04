@@ -170,13 +170,13 @@ class KimiService:
                 content_chunk = chunk.choices[0].delta.content
                 accumulated_content += content_chunk
 
-                # 发送流式数据块
+                # 发送流式数据块（原始JSON片段）
                 yield StreamChunk(
                     chunk_id=chunk_id,
                     chunk_type="content",
                     data={
-                        "chunk": content_chunk,
-                        "accumulated": accumulated_content
+                        "chunk": content_chunk,  # 原始chunk
+                        "accumulated": accumulated_content  # 累积的JSON
                     },
                     is_complete=False
                 )

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChapterApi, NovelApi } from '../../services/api';
 import '../../styles/ReadingPage.css';
@@ -16,6 +16,9 @@ const ReadingPage = () => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [error, setError] = useState(null);
 
+  // 流式连接控制器（用于取消请求）
+  const streamAbortController = useRef(null);
+
   // 显示Toast消息
   const showToast = (message) => {
     const toast = document.createElement('div');
@@ -25,6 +28,13 @@ const ReadingPage = () => {
     setTimeout(() => {
       document.body.removeChild(toast);
     }, 3000);
+  };
+
+  // 获取API基地址
+  const getApiBaseUrl = () => {
+    return import.meta.env.VITE_API_BASE_URL
+      || (typeof window !== 'undefined' && window.__API_BASE_URL__ && window.__API_BASE_URL__ !== '__API_BASE_URL__' ? window.__API_BASE_URL__ : null)
+      || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8080/api/v1`;
   };
 
   // 加载小说信息
@@ -66,84 +76,223 @@ const ReadingPage = () => {
     }
   };
 
-  // 初始化加载
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-
-      // 检查是否有正在生成的章节数据
-      const cachedData = localStorage.getItem(`chapter_generating_${novelId}`);
-      let isRestoring = false;
-
-      if (cachedData) {
-        try {
-          const parsed = JSON.parse(cachedData);
-          console.log('从localStorage读取的数据:', parsed);
-          if (parsed.status === 'generating') {
-            // 恢复生成中的章节显示
-            const restoredChapter = {
-              title: parsed.title || '生成中...',
-              content: parsed.content || '',
-              isStreaming: true,
-              options: []
-            };
-            console.log('恢复的章节对象:', restoredChapter);
-            setCurrentChapter(restoredChapter);
-            setGeneratingChapter(true);
-            isRestoring = true;
-          }
-        } catch (e) {
-          console.error('解析localStorage数据失败:', e);
-          localStorage.removeItem(`chapter_generating_${novelId}`);
-        }
-      }
-
-      await loadNovel();
-
-      // 只有在不是恢复生成中章节的情况下才加载章节列表
-      // 因为loadChapters会覆盖currentChapter
-      if (!isRestoring) {
-        await loadChapters();
-      }
-
-      setLoading(false);
-    };
-
-    if (novelId) {
-      init();
+  // 取消流式连接
+  const abortStream = () => {
+    if (streamAbortController.current) {
+      console.log('🔌 取消流式连接');
+      streamAbortController.current.abort();
+      streamAbortController.current = null;
     }
-  }, [novelId, chapterId]);
+  };
 
-  // 监听localStorage变化,实时更新生成中的章节内容
-  useEffect(() => {
-    const handleStorageUpdate = () => {
-      const cachedData = localStorage.getItem(`chapter_generating_${novelId}`);
-      if (cachedData) {
-        try {
-          const parsed = JSON.parse(cachedData);
-          if (parsed.status === 'generating') {
-            console.log('[轮询] 更新内容,标题:', parsed.title, '内容长度:', parsed.content?.length);
-            setCurrentChapter(prev => ({
-              ...prev,
-              title: parsed.title || prev?.title || '生成中...',
-              content: parsed.content || prev?.content || '',
-              isStreaming: true,
-              options: prev?.options || []
-            }));
+  // 连接到流式接口（使用fetch + ReadableStream）
+  const connectToStream = async (chapterId) => {
+    // 先取消已有连接
+    abortStream();
+
+    const apiBaseUrl = getApiBaseUrl();
+    const token = localStorage.getItem('access_token');
+    const streamUrl = `${apiBaseUrl}/chapters/${chapterId}/stream`;
+
+    console.log(`📡 连接流式接口: ${streamUrl}`);
+
+    // 创建AbortController
+    const controller = new AbortController();
+    streamAbortController.current = controller;
+
+    let streamingChapter = {
+      id: chapterId,
+      title: '',
+      content: '',
+      options: [],
+      isStreaming: true
+    };
+
+    try {
+      const response = await fetch(streamUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'text/event-stream'
+        },
+        signal: controller.signal
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 保留不完整的行
+
+        let currentEvent = null;
+        let currentData = '';
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            currentEvent = line.substring(6).trim();
+          } else if (line.startsWith('data:')) {
+            currentData = line.substring(5).trim();
+
+            // 处理不同事件
+            if (currentEvent === 'summary') {
+              const data = JSON.parse(currentData);
+              console.log('📌 [summary]', data.title);
+              streamingChapter.title = data.title;
+
+              localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify({
+                chapter_id: chapterId,
+                title: streamingChapter.title,
+                content: streamingChapter.content,
+                status: 'generating',
+                timestamp: Date.now()
+              }));
+
+              setCurrentChapter({ ...streamingChapter });
+
+            } else if (currentEvent === 'content') {
+              const data = JSON.parse(currentData);
+              const textChunk = data.text || '';
+
+              if (textChunk) {
+                streamingChapter.content += textChunk;
+
+                localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify({
+                  chapter_id: chapterId,
+                  title: streamingChapter.title,
+                  content: streamingChapter.content,
+                  status: 'generating',
+                  timestamp: Date.now()
+                }));
+
+                setCurrentChapter({ ...streamingChapter });
+              }
+
+            } else if (currentEvent === 'complete') {
+              const data = JSON.parse(currentData);
+              console.log('✅ [complete]', data);
+
+              const finalChapter = {
+                id: data.chapter_id,
+                title: data.title,
+                content: data.content,
+                options: data.options ? data.options.map((opt, index) => ({
+                  id: opt.id || `temp_${Date.now()}_${index}`,
+                  option_text: opt.text || opt.option_text || `选项 ${index + 1}`,
+                  impact_description: opt.impact_hint || opt.impact_description || ''
+                })) : [],
+                isStreaming: false
+              };
+
+              setCurrentChapter(finalChapter);
+              setGeneratingChapter(false);
+
+              localStorage.removeItem(`chapter_generating_${novelId}`);
+              loadChapters();
+              showToast('章节生成完成！');
+
+            } else if (currentEvent === 'error') {
+              const data = JSON.parse(currentData);
+              const errorMsg = data.error || '生成失败';
+
+              console.error('❌ [error]', errorMsg);
+              showToast(errorMsg);
+
+              setCurrentChapter(prev => ({
+                ...prev,
+                isStreaming: false,
+                error: errorMsg
+              }));
+              setGeneratingChapter(false);
+
+              localStorage.removeItem(`chapter_generating_${novelId}`);
+            }
+
+            currentEvent = null;
+            currentData = '';
           }
-        } catch (e) {
-          console.error('监听localStorage更新失败:', e);
         }
       }
-    };
 
-    // 使用setInterval轮询localStorage变化(因为同一个标签页内storage事件不会触发)
-    const intervalId = setInterval(handleStorageUpdate, 500);
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('🔌 流式连接已取消');
+      } else {
+        console.error('❌ 流式连接失败:', error);
+        showToast(`连接失败: ${error.message}`);
+        setGeneratingChapter(false);
+      }
+    } finally {
+      streamAbortController.current = null;
+    }
+  };
 
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [novelId]);
+  // 生成章节（新架构：两步调用）
+  const generateChapter = async (isFirstChapter = false) => {
+    try {
+      setGeneratingChapter(true);
+      showToast(isFirstChapter ? '正在生成第一章...' : '正在生成下一章...');
+
+      const apiBaseUrl = getApiBaseUrl();
+      const token = localStorage.getItem('access_token');
+
+      // Step 1: POST请求开始生成（立即返回chapter_id）
+      const response = await fetch(`${apiBaseUrl}/novels/${novelId}/chapters/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          selected_option_id: isFirstChapter ? null : selectedOption?.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('生成请求失败');
+      }
+
+      const result = await response.json();
+      const { chapter_id, status } = result;
+
+      console.log(`🚀 章节生成已启动: chapter_id=${chapter_id}, status=${status}`);
+
+      // 初始化流式章节显示
+      setCurrentChapter({
+        id: chapter_id,
+        title: '生成中...',
+        content: '',
+        options: [],
+        isStreaming: true
+      });
+
+      // 保存到localStorage
+      localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify({
+        chapter_id: chapter_id,
+        title: '生成中...',
+        content: '',
+        status: 'generating',
+        timestamp: Date.now()
+      }));
+
+      // Step 2: 连接GET /stream接口获取流式数据
+      connectToStream(chapter_id);
+
+    } catch (error) {
+      console.error('生成章节失败:', error);
+      showToast('生成失败，请重试');
+      setGeneratingChapter(false);
+    }
+  };
 
   // 选择选项
   const handleOptionSelect = (option) => {
@@ -154,17 +303,9 @@ const ReadingPage = () => {
   const handleConfirmChoice = async () => {
     if (!selectedOption || !currentChapter) return;
 
-    // 检查章节ID是否有效
-    if (!currentChapter.id || currentChapter.id === 'undefined') {
-      console.error('Invalid chapter ID:', currentChapter.id);
-      showToast('章节信息错误，请刷新页面重试');
-      return;
-    }
-
-    // 检查选项ID是否有效
-    if (!selectedOption.id || selectedOption.id === 'undefined') {
-      console.error('Invalid option ID:', selectedOption.id);
-      showToast('选项信息错误，请重新选择');
+    // 检查章节ID和选项ID
+    if (!currentChapter.id || !selectedOption.id) {
+      showToast('数据错误，请刷新页面重试');
       return;
     }
 
@@ -172,12 +313,8 @@ const ReadingPage = () => {
       // 保存用户选择
       await ChapterApi.saveUserChoice(currentChapter.id, selectedOption.id);
 
-      // 开始生成下一章
-      setGeneratingChapter(true);
-      showToast('正在生成下一章节...');
-
-      // 调用章节生成API（流式）
-      await generateNextChapter();
+      // 生成下一章
+      await generateChapter(false);
 
     } catch (error) {
       console.error('生成章节失败:', error);
@@ -186,287 +323,10 @@ const ReadingPage = () => {
     }
   };
 
-  // 生成下一章节（流式处理）
-  const generateNextChapter = async () => {
-    try {
-      // 获取API基地址
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-        || (typeof window !== 'undefined' && window.__API_BASE_URL__ && window.__API_BASE_URL__ !== '__API_BASE_URL__' ? window.__API_BASE_URL__ : null)
-        || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/api/v1`;
-
-      const response = await fetch(`${apiBaseUrl}/novels/${novelId}/chapters/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-        },
-        body: JSON.stringify({})
-      });
-
-      if (!response.ok) {
-        throw new Error('生成请求失败');
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let newChapterData = null;
-      let streamingChapter = {
-        title: '',
-        content: '',
-        options: []
-      };
-
-      // 累积的原始JSON字符串，用于智能解析
-      let accumulatedJson = '';
-
-      // 获取resume_token用于断线重连
-      const resumeToken = response.headers.get('X-Resume-Token');
-      console.log('Resume Token:', resumeToken);
-
-      // 创建流式章节显示
-      setCurrentChapter({
-        ...streamingChapter,
-        isStreaming: true
-      });
-
-      // 尝试从累积的JSON中提取content字段
-      const tryExtractContent = (jsonStr) => {
-        try {
-          // 尝试多种方式解析部分JSON
-          let content = '';
-
-          // 方法1: 使用正则表达式寻找content字段
-          // 支持处理转义字符和多行内容
-          const contentMatch = jsonStr.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
-          if (contentMatch) {
-            content = contentMatch[1]
-              .replace(/\\n/g, '\n')
-              .replace(/\\"/g, '"')
-              .replace(/\\t/g, '\t')
-              .replace(/\\\\/g, '\\');
-            return content;
-          }
-
-          // 方法2: 尝试直接JSON解析完整对象
-          try {
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.content) {
-              return parsed.content;
-            }
-          } catch (e) {
-            // 继续尝试其他方法
-          }
-
-          // 方法3: 处理不完整的JSON，尝试补全并解析
-          if (jsonStr.includes('"content"')) {
-            // 寻找content字段到字符串结束的部分
-            const contentStart = jsonStr.indexOf('"content"');
-            let valueStart = jsonStr.indexOf(':', contentStart);
-            if (valueStart !== -1) {
-              valueStart = jsonStr.indexOf('"', valueStart) + 1;
-              if (valueStart > 0) {
-                // 找到可能的content值
-                let currentPos = valueStart;
-                let content = '';
-                let escapeNext = false;
-
-                while (currentPos < jsonStr.length) {
-                  const char = jsonStr[currentPos];
-
-                  if (escapeNext) {
-                    // 处理转义字符
-                    if (char === 'n') content += '\n';
-                    else if (char === 't') content += '\t';
-                    else if (char === '"') content += '"';
-                    else if (char === '\\') content += '\\';
-                    else content += char;
-                    escapeNext = false;
-                  } else if (char === '\\') {
-                    escapeNext = true;
-                  } else if (char === '"') {
-                    // 找到字符串结束
-                    break;
-                  } else {
-                    content += char;
-                  }
-
-                  currentPos++;
-                }
-
-                return content;
-              }
-            }
-          }
-
-          return '';
-        } catch (e) {
-          console.debug('JSON解析失败:', e);
-          return '';
-        }
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        // 测试: 验证离开页面后是否还在接收数据
-        console.log('[测试] 收到新数据块,时间:', new Date().toLocaleTimeString());
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-
-          if (line.startsWith('event: error')) {
-            // 处理错误事件
-            const dataLine = lines[i + 1];
-            if (dataLine && dataLine.startsWith('data: ')) {
-              const errorData = JSON.parse(dataLine.substring(6));
-              console.error('流式生成错误:', errorData);
-              showToast(`生成失败: ${errorData.error || '未知错误'}`);
-              setCurrentChapter({
-                ...streamingChapter,
-                isStreaming: false,
-                error: errorData.error || '生成过程中发生错误'
-              });
-              setGeneratingChapter(false);
-              return;
-            }
-          } else if (line.startsWith('event: summary')) {
-            const dataLine = lines[i + 1];
-            if (dataLine && dataLine.startsWith('data: ')) {
-              const data = JSON.parse(dataLine.substring(6));
-              streamingChapter.title = data.title;
-
-              // 保存标题到localStorage
-              localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify({
-                title: streamingChapter.title,
-                content: streamingChapter.content,
-                resumeToken: resumeToken,
-                timestamp: Date.now(),
-                status: 'generating'
-              }));
-
-              setCurrentChapter({
-                ...streamingChapter,
-                isStreaming: true
-              });
-            }
-          } else if (line.startsWith('event: content')) {
-            const dataLine = lines[i + 1];
-            if (dataLine && dataLine.startsWith('data: ')) {
-              const data = JSON.parse(dataLine.substring(6));
-              // 后端发送的是原始JSON片段
-              let textChunk = data.text || '';
-
-              if (textChunk.trim()) {
-                // 累积原始JSON
-                accumulatedJson += textChunk;
-
-                // 尝试从累积的JSON中提取content
-                const extractedContent = tryExtractContent(accumulatedJson);
-
-                if (extractedContent && extractedContent !== streamingChapter.content) {
-                  streamingChapter.content = extractedContent;
-
-                  // 保存到localStorage,确保离开页面后也能恢复
-                  localStorage.setItem(`chapter_generating_${novelId}`, JSON.stringify({
-                    title: streamingChapter.title,
-                    content: streamingChapter.content,
-                    resumeToken: resumeToken,
-                    timestamp: Date.now(),
-                    status: 'generating'
-                  }));
-
-                  // 实时更新章节显示
-                  setCurrentChapter({
-                    ...streamingChapter,
-                    isStreaming: true
-                  });
-                }
-              }
-            }
-          } else if (line.startsWith('event: complete')) {
-            const dataLine = lines[i + 1];
-            if (dataLine && dataLine.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(dataLine.substring(6));
-                console.log('Complete event data:', data);
-
-                // 使用complete事件的完整数据
-                newChapterData = {
-                  id: data.chapter_id || Date.now(),
-                  title: data.title || streamingChapter.title || '未知章节',
-                  content: data.content || streamingChapter.content || '',
-                  options: data.options ? data.options.map((opt, index) => ({
-                    id: opt.id || `temp_${Date.now()}_${index}`,
-                    option_text: opt.text || opt.option_text || `选项 ${index + 1}`,
-                    impact_description: opt.impact_hint || opt.impact_description || ''
-                  })) : []
-                };
-
-                console.log('Final chapter data:', newChapterData);
-
-              } catch (parseError) {
-                console.error('Failed to parse complete event data:', parseError);
-                // 解析失败时尝试使用流式数据
-                newChapterData = {
-                  id: Date.now(),
-                  title: streamingChapter.title || '未知章节',
-                  content: streamingChapter.content || '',
-                  options: []
-                };
-              }
-
-              // 只更新options和isStreaming状态,保持内容不变(避免触发滚动)
-              setCurrentChapter(prev => ({
-                ...prev,
-                options: newChapterData.options,
-                isStreaming: false
-              }));
-              break;
-            }
-          }
-        }
-      }
-
-      if (newChapterData) {
-        // 章节生成完成,清理localStorage中的临时数据
-        localStorage.removeItem(`chapter_generating_${novelId}`);
-
-        // 只更新chapters列表,不调用loadChapters避免重置currentChapter
-        // 直接添加新章节到列表末尾
-        setChapters(prev => [...prev, {
-          id: newChapterData.id,
-          chapter_number: prev.length + 1,
-          title: newChapterData.title,
-          status: 'completed'
-        }]);
-
-        // 检查用户是否还在阅读页面
-        const currentPath = window.location.pathname;
-        const isOnReadingPage = currentPath.includes(`/novels/${novelId}/chapters`) ||
-                                currentPath === `/novels/${novelId}`;
-
-        if (isOnReadingPage) {
-          // 用户还在阅读页面,更新URL但不触发页面刷新(保持滚动位置)
-          window.history.replaceState(null, '', `/novels/${novelId}/chapters/${newChapterData.id}`);
-          showToast('新章节生成完成！');
-        } else {
-          // 用户已经离开,只提示不跳转
-          showToast('新章节已生成,可返回查看');
-        }
-
-        setSelectedOption(null);
-      }
-
-    } catch (error) {
-      console.error('流式生成失败:', error);
-      throw error;
-    } finally {
-      setGeneratingChapter(false);
-    }
+  // 生成第一章
+  const handleGenerateFirstChapter = async () => {
+    if (chapters.length > 0) return;
+    await generateChapter(true);
   };
 
   // 章节导航
@@ -474,20 +334,72 @@ const ReadingPage = () => {
     navigate(`/novels/${novelId}/chapters/${chapter.id}`);
   };
 
-  // 如果没有章节，显示生成第一章的界面
-  const handleGenerateFirstChapter = async () => {
-    if (chapters.length > 0) return;
+  // 初始化加载
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
 
-    try {
-      setGeneratingChapter(true);
-      showToast('正在生成第一章...');
-      await generateNextChapter();
-    } catch (error) {
-      console.error('生成第一章失败:', error);
-      showToast('生成失败，请重试');
-      setGeneratingChapter(false);
+      // 检查是否有正在生成的章节（断线重连）
+      const cachedData = localStorage.getItem(`chapter_generating_${novelId}`);
+      let shouldReconnect = false;
+      let reconnectChapterId = null;
+
+      if (cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          console.log('📦 从localStorage读取:', parsed);
+
+          if (parsed.status === 'generating' && parsed.chapter_id) {
+            // 检查时间戳，如果超过10分钟则放弃重连
+            const elapsed = Date.now() - parsed.timestamp;
+            if (elapsed < 10 * 60 * 1000) {
+              shouldReconnect = true;
+              reconnectChapterId = parsed.chapter_id;
+
+              // 恢复章节显示
+              setCurrentChapter({
+                id: reconnectChapterId,
+                title: parsed.title || '生成中...',
+                content: parsed.content || '',
+                options: [],
+                isStreaming: true
+              });
+              setGeneratingChapter(true);
+
+              console.log(`🔄 准备重连到章节 ${reconnectChapterId}`);
+            } else {
+              console.log('⏰ 生成超时，清理localStorage');
+              localStorage.removeItem(`chapter_generating_${novelId}`);
+            }
+          }
+        } catch (e) {
+          console.error('解析localStorage失败:', e);
+          localStorage.removeItem(`chapter_generating_${novelId}`);
+        }
+      }
+
+      await loadNovel();
+
+      // 如果需要重连，不加载章节列表（避免覆盖currentChapter）
+      if (shouldReconnect && reconnectChapterId) {
+        console.log(`🔌 重连到流式接口: chapter ${reconnectChapterId}`);
+        connectToStream(reconnectChapterId);
+      } else {
+        await loadChapters();
+      }
+
+      setLoading(false);
+    };
+
+    if (novelId) {
+      init();
     }
-  };
+
+    // 清理函数：组件卸载时取消流式连接
+    return () => {
+      abortStream();
+    };
+  }, [novelId, chapterId]);
 
   // 加载状态
   if (loading) {
@@ -560,104 +472,125 @@ const ReadingPage = () => {
     );
   }
 
-  // 第一章生成中的流式显示状态
-  if (chapters.length === 0 && (generatingChapter || currentChapter)) {
-    return (
-      <div className="reading-page">
-        <nav className="custom-navbar">
-          <button className="nav-back-btn" onClick={() => navigate('/novels')}>
-            ←
+  // 渲染章节内容的公共组件
+  const renderChapterContent = () => (
+    <div className="chapter-content">
+      <div className="chapter-header">
+        <h2 className="chapter-title">
+          {currentChapter.title || '生成中...'}
+        </h2>
+        {currentChapter.isStreaming && (
+          <p className="streaming-indicator">✨ AI正在创作中...</p>
+        )}
+        {currentChapter.error && (
+          <p className="error-indicator">❌ {currentChapter.error}</p>
+        )}
+      </div>
+
+      <div className="chapter-text">
+        {currentChapter.content && currentChapter.content.trim() ? (
+          (() => {
+            const contentText = currentChapter.content.trim();
+            const paragraphs = contentText
+              .split(/\n+/)
+              .filter(para => para.trim())
+              .map(para => para.trim());
+
+            if (paragraphs.length === 0) {
+              return (
+                <p className="chapter-paragraph">
+                  {contentText}
+                  {currentChapter.isStreaming && (
+                    <span className="typing-cursor">|</span>
+                  )}
+                </p>
+              );
+            }
+
+            return paragraphs.map((paragraph, index) => {
+              const isLastParagraph = index === paragraphs.length - 1;
+              const shouldShowCursor = currentChapter.isStreaming && isLastParagraph;
+
+              return (
+                <p key={index} className="chapter-paragraph">
+                  {paragraph}
+                  {shouldShowCursor && (
+                    <span className="typing-cursor">|</span>
+                  )}
+                </p>
+              );
+            });
+          })()
+        ) : (
+          <p className="no-content">
+            {currentChapter.isStreaming ? '✨ AI正在构思章节内容...' : '章节内容加载中...'}
+          </p>
+        )}
+      </div>
+
+      {/* 错误状态下的重试按钮 */}
+      {currentChapter.error && !currentChapter.isStreaming && (
+        <div className="error-actions">
+          <button
+            className="retry-btn"
+            onClick={() => {
+              setCurrentChapter({
+                ...currentChapter,
+                error: null
+              });
+              if (chapters.length === 0) {
+                handleGenerateFirstChapter();
+              } else {
+                handleConfirmChoice();
+              }
+            }}
+          >
+            🔄 重新生成
           </button>
-          <h1>{novel?.title || '小说阅读'}</h1>
-        </nav>
-        <div className="reading-content">
-          {/* 显示正在生成的第一章内容 */}
-          {currentChapter && (
-            <div className="chapter-content">
-              <div className="chapter-header">
-                <h2 className="chapter-title">
-                  {currentChapter.title || '第一章'}
-                </h2>
-                {currentChapter.isStreaming && (
-                  <p className="streaming-indicator">✨ AI正在创作中...</p>
-                )}
-                {currentChapter.error && (
-                  <p className="error-indicator">❌ {currentChapter.error}</p>
-                )}
-              </div>
+        </div>
+      )}
 
-              <div className="chapter-text">
-                {currentChapter.content && currentChapter.content.trim() ? (
-                  (() => {
-                    // 简化段落处理逻辑，确保实时渲染效果
-                    let contentText = currentChapter.content.trim();
-
-                    // 将内容按段落分割 - 支持单换行符和双换行符
-                    const paragraphs = contentText
-                      .split(/\n+/) // 按换行符分割
-                      .filter(para => para.trim()) // 过滤空段落
-                      .map(para => para.trim()); // 清理首尾空白
-
-                    // 如果没有分割成功，直接显示整个内容
-                    if (paragraphs.length === 0) {
-                      return (
-                        <p className="chapter-paragraph">
-                          {contentText}
-                          {currentChapter.isStreaming && (
-                            <span className="typing-cursor">|</span>
-                          )}
-                        </p>
-                      );
-                    }
-
-                    // 渲染每个段落
-                    return paragraphs.map((paragraph, index) => {
-                      const isLastParagraph = index === paragraphs.length - 1;
-                      const shouldShowCursor = currentChapter.isStreaming && isLastParagraph;
-
-                      return (
-                        <p key={index} className="chapter-paragraph">
-                          {paragraph}
-                          {shouldShowCursor && (
-                            <span className="typing-cursor">|</span>
-                          )}
-                        </p>
-                      );
-                    });
-                  })()
-                ) : (
-                  <p className="no-content">
-                    {currentChapter.isStreaming ? '✨ AI正在构思章节内容...' : '章节内容加载中...'}
-                  </p>
-                )}
-              </div>
-
-              {/* 错误状态下的重试按钮 */}
-              {currentChapter.error && !currentChapter.isStreaming && (
-                <div className="error-actions">
-                  <button
-                    className="retry-btn"
-                    onClick={handleGenerateFirstChapter}
-                  >
-                    重新生成第一章
-                  </button>
+      {/* 选择选项 - 仅在非流式状态且有选项时显示 */}
+      {!currentChapter.isStreaming && !currentChapter.error && currentChapter.options && currentChapter.options.length > 0 && (
+        <div className="chapter-options">
+          <h3 className="options-title">选择你的行动：</h3>
+          <div className="options-list">
+            {currentChapter.options.map((option, index) => (
+              <div
+                key={option.id}
+                className={`option-card ${selectedOption?.id === option.id ? 'selected' : ''}`}
+                onClick={() => handleOptionSelect(option)}
+              >
+                <div className="option-number">{index + 1}</div>
+                <div className="option-content">
+                  <p className="option-text">{option.option_text}</p>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
 
-          {/* 只有加载状态，还没有章节内容 */}
-          {generatingChapter && !currentChapter && (
-            <div className="empty-chapters">
-              <div className="loading-spinner">⚡</div>
-              <h2>AI正在创作第一章...</h2>
-              <p>请稍等，精彩内容即将呈现</p>
+          {selectedOption && (
+            <div className="choice-confirm">
+              <button
+                className="confirm-choice-btn"
+                onClick={handleConfirmChoice}
+                disabled={generatingChapter}
+              >
+                {generatingChapter ? (
+                  <>
+                    <span className="loading-spinner">⚡</span>
+                    正在生成下一章...
+                  </>
+                ) : (
+                  '✨ 确认选择并继续'
+                )}
+              </button>
             </div>
           )}
         </div>
-      </div>
-    );
-  }
+      )}
+    </div>
+  );
 
   // 正常阅读界面
   return (
@@ -678,125 +611,14 @@ const ReadingPage = () => {
 
       <div className="reading-content">
         {/* 章节内容 */}
-        {currentChapter && (
-          <div className="chapter-content">
-            <div className="chapter-header">
-              <h2 className="chapter-title">{currentChapter.title}</h2>
-              {currentChapter.isStreaming && (
-                <p className="streaming-indicator">✨ AI正在创作中...</p>
-              )}
-              {currentChapter.error && (
-                <p className="error-indicator">❌ {currentChapter.error}</p>
-              )}
-            </div>
+        {currentChapter && renderChapterContent()}
 
-            <div className="chapter-text">
-              {currentChapter.content && currentChapter.content.trim() ? (
-                (() => {
-                  // 简化段落处理逻辑，确保实时渲染效果
-                  let contentText = currentChapter.content.trim();
-
-                  // 将内容按段落分割 - 支持单换行符和双换行符
-                  const paragraphs = contentText
-                    .split(/\n+/) // 按换行符分割
-                    .filter(para => para.trim()) // 过滤空段落
-                    .map(para => para.trim()); // 清理首尾空白
-
-                  // 如果没有分割成功，直接显示整个内容
-                  if (paragraphs.length === 0) {
-                    return (
-                      <p className="chapter-paragraph">
-                        {contentText}
-                        {currentChapter.isStreaming && (
-                          <span className="typing-cursor">|</span>
-                        )}
-                      </p>
-                    );
-                  }
-
-                  // 渲染每个段落
-                  return paragraphs.map((paragraph, index) => {
-                    const isLastParagraph = index === paragraphs.length - 1;
-                    const shouldShowCursor = currentChapter.isStreaming && isLastParagraph;
-
-                    return (
-                      <p key={index} className="chapter-paragraph">
-                        {paragraph}
-                        {shouldShowCursor && (
-                          <span className="typing-cursor">|</span>
-                        )}
-                      </p>
-                    );
-                  });
-                })()
-              ) : (
-                <p className="no-content">
-                  {currentChapter.isStreaming ? '✨ AI正在构思章节内容...' : '章节内容加载中...'}
-                </p>
-              )}
-            </div>
-
-            {/* 错误状态下的重试按钮 */}
-            {currentChapter.error && !currentChapter.isStreaming && (
-              <div className="error-actions">
-                <button
-                  className="retry-btn"
-                  onClick={() => {
-                    setCurrentChapter({
-                      ...currentChapter,
-                      error: null
-                    });
-                    if (chapters.length === 0) {
-                      handleGenerateFirstChapter();
-                    } else {
-                      handleConfirmChoice();
-                    }
-                  }}
-                >
-                  🔄 重新生成
-                </button>
-              </div>
-            )}
-
-            {/* 选择选项 - 仅在非流式状态且有选项时显示 */}
-            {!currentChapter.isStreaming && !currentChapter.error && currentChapter.options && currentChapter.options.length > 0 && (
-              <div className="chapter-options">
-                <h3 className="options-title">选择你的行动：</h3>
-                <div className="options-list">
-                  {currentChapter.options.map((option, index) => (
-                    <div
-                      key={option.id}
-                      className={`option-card ${selectedOption?.id === option.id ? 'selected' : ''}`}
-                      onClick={() => handleOptionSelect(option)}
-                    >
-                      <div className="option-number">{index + 1}</div>
-                      <div className="option-content">
-                        <p className="option-text">{option.option_text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {selectedOption && (
-                  <div className="choice-confirm">
-                    <button
-                      className="confirm-choice-btn"
-                      onClick={handleConfirmChoice}
-                      disabled={generatingChapter}
-                    >
-                      {generatingChapter ? (
-                        <>
-                          <span className="loading-spinner">⚡</span>
-                          正在生成下一章...
-                        </>
-                      ) : (
-                        '✨ 确认选择并继续'
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+        {/* 生成中但还没有内容 */}
+        {generatingChapter && !currentChapter && (
+          <div className="empty-chapters">
+            <div className="loading-spinner">⚡</div>
+            <h2>AI正在创作中...</h2>
+            <p>请稍等，精彩内容即将呈现</p>
           </div>
         )}
 
