@@ -252,9 +252,7 @@ const ReadingPage = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          selected_option_id: isFirstChapter ? null : selectedOption?.id
-        })
+        body: JSON.stringify({})
       });
 
       if (!response.ok) {

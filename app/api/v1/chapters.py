@@ -1,4 +1,4 @@
-import json
+import asyncio
 import logging
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import StreamingResponse
@@ -10,7 +10,7 @@ from app.services.chapter import ChapterService
 from app.services.chapter_generator import chapter_generator
 from app.services.novel import NovelService
 from app.services.stream_manager import StreamGenerationManager
-from app.models.chapter import ChapterStatus
+from app.models.chapter import Chapter, ChapterStatus
 from app.schemas.chapter import (
     GenerateChapterRequest,
     SaveUserChoiceRequest,
@@ -43,8 +43,6 @@ async def generate_chapter(
 
     前端接下来应该调用 GET /chapters/{chapter_id}/stream 获取流式数据
     """
-    import asyncio
-
     try:
         # 1. 验证小说
         novel_service = NovelService(db)
@@ -66,8 +64,6 @@ async def generate_chapter(
         chapter_service = ChapterService(db)
         latest_chapter_num = await chapter_service.get_latest_chapter_number(novel_id)
 
-        # 直接创建章节实例
-        from app.models.chapter import Chapter
         chapter = Chapter(
             novel_id=novel_id,
             chapter_number=latest_chapter_num + 1,
@@ -99,7 +95,6 @@ async def generate_chapter(
                 chapter_generator.generate_next_chapter_background(
                     chapter_id=chapter.id,
                     novel_id=novel_id,
-                    selected_option_id=request.selected_option_id,
                     genre=novel.theme or "wuxia"
                 )
             )

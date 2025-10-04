@@ -7,27 +7,25 @@ import logging
 
 from typing import AsyncGenerator, Dict, Any
 
-from fastapi import HTTPException
-
-logger = logging.getLogger(__name__)
-
-def json_dumps_chinese(obj):
-    """JSON序列化时保持中文显示"""
-    return json.dumps(obj, ensure_ascii=False)
-
+from app.db.database import async_session_maker
 from app.schemas.chapter import (
     ChapterSummary,
     ChapterFullContent,
     ChapterContext,
     StreamEvent
 )
-from app.schemas.novel import NovelGenre
 from app.services.kimi import kimi_service
 from app.services.chapter import ChapterService
 from app.services.novel import NovelService
 from app.services.stream_manager import StreamGenerationManager, managed_stream_generation
 from app.utils.json_extractor import extract_content_from_json_fragment
 from app.models.chapter import ChapterStatus
+
+logger = logging.getLogger(__name__)
+
+def json_dumps_chinese(obj):
+    """JSON序列化时保持中文显示"""
+    return json.dumps(obj, ensure_ascii=False)
 
 
 class ChapterGeneratorService:
@@ -433,8 +431,6 @@ tags字段包含上述五个标签维度。"""
 
         注意: 后台任务创建自己的数据库session,避免session被提前关闭
         """
-        from app.db.database import async_session_maker
-
         session_id = StreamGenerationManager.generate_session_id()
 
         # 后台任务创建自己的数据库session
@@ -526,7 +522,6 @@ tags字段包含上述五个标签维度。"""
         self,
         chapter_id: int,
         novel_id: int,
-        selected_option_id: int,
         genre: str
     ) -> None:
         """
@@ -534,8 +529,6 @@ tags字段包含上述五个标签维度。"""
 
         注意: 后台任务创建自己的数据库session,避免session被提前关闭
         """
-        from app.db.database import async_session_maker
-
         session_id = StreamGenerationManager.generate_session_id()
 
         # 后台任务创建自己的数据库session
@@ -560,7 +553,7 @@ tags字段包含上述五个标签维度。"""
                             "summary": getattr(ch, 'summary', ''),
                             "content": ch.content[:500] if ch.content else ''
                         }
-                        for ch in chapters[-3:] if ch.status == ChapterStatus.COMPLETED
+                        for ch in chapters[-5:] if ch.status == ChapterStatus.COMPLETED
                     ]
 
                     context = ChapterContext(

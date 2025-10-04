@@ -25,13 +25,10 @@ class GenerateChapterRequest(BaseModel):
     """
     章节生成请求
 
-    - 第一章: selected_option_id = None
-    - 后续章节: selected_option_id = 上一章选择的option_id
+    注意：用户选择已通过 /chapters/{chapter_id}/choice 接口保存，
+    生成时无需传递选项ID
     """
-    selected_option_id: Optional[int] = Field(
-        None,
-        description="用户选择的选项ID (第一章传None)"
-    )
+    pass
 
 
 class SaveUserChoiceRequest(BaseModel):
